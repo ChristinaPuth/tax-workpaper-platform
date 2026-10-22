@@ -152,3 +152,16 @@ def test_node_preview(client):
     n = client.get("/api/nodes/ev:ev-0127").json()
     assert n["kind"] == "extracted_value" and n["document"] == "D21"
     assert client.get("/api/nodes/line:v3:NOPE").status_code == 404
+
+
+def test_frontend_routes_fall_back_to_the_app_shell(tmp_path, monkeypatch):
+    import app.main as main
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<div id=root></div>")
+    (tmp_path / "assets" / "app.js").write_text("console.log(1)")
+    monkeypatch.setattr(main, "FRONTEND_DIST", tmp_path)
+    with TestClient(main.create_app(str(PACKET), f"sqlite:///{tmp_path / 'db.sqlite'}")) as c:
+        assert "id=root" in c.get("/documents/D23?page=3").text      # client-side route
+        assert c.get("/assets/app.js").text == "console.log(1)"
+        assert c.get("/api/overview").json()["latest_version"] == "v3"  # API still wins
+        assert c.get("/api/nope").status_code == 404                  # unknown API path is not the shell

@@ -14,8 +14,9 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from workpaper.checks import run_all
@@ -72,7 +73,17 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     app.include_router(router)
     app.include_router(events_router)
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
-        app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+        app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        def spa(path: str) -> FileResponse:
+            # client-side routes (/documents/D23, /return?line=...) all load the app shell
+            if path.startswith("api/"):
+                raise HTTPException(404, f"no API route /{path}")
+            f = (FRONTEND_DIST / path).resolve()
+            if path and f.is_file() and FRONTEND_DIST in f.parents:
+                return FileResponse(f)
+            return FileResponse(FRONTEND_DIST / "index.html")
     return app
 
 
