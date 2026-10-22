@@ -1,0 +1,10 @@
+.venv/
+var/
+out/
+docs/
+analysis/
+tests/
+**/__pycache__/
+.pytest_cache/
+.DS_Store
+frontend/node_modules/

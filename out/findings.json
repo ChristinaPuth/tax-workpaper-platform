@@ -1,0 +1,2928 @@
+{
+ "findings": [
+  {
+   "id": "F-001",
+   "check": "X1-identifier-not-printed",
+   "title": "Provider tax ID misread on D62: 74-3829516 vs printed 74-3829156",
+   "severity": "error",
+   "origin": "extraction",
+   "detail": "Pipeline read 74-3829516 (confidence 0.97); the page prints 74-3829156 - same digits, transposed. Flows to F2441.1b.",
+   "nodes": [
+    "ev:ev-1045",
+    "line:v3:F2441.1b"
+   ],
+   "evidence": [
+    "page:D62#1"
+   ],
+   "corrections": [
+    {
+     "line": "F2441.1b",
+     "current": "74-3829516",
+     "proposed": "74-3829156",
+     "category": "none"
+    }
+   ],
+   "federal_effect": 0,
+   "california_effect": 0,
+   "effect_note": "No tax effect; the identifier is wrong on the filed form.",
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-002",
+   "check": "X2-value-not-printed",
+   "title": "D64 Cash gift amount: 1,500 is not printed on the page",
+   "severity": "info",
+   "origin": "extraction",
+   "detail": "Pipeline read 1,500 from text '1,500.00' (confidence 0.41), but no such amount appears on D64 page 1. Page text: \"Handwritten receipt on parish letterhead dated 12/21/2025: 'Received from the Okafor-Lindqvist family, $?,500.00 - thank you.' The first digit is ambiguous (could be read as 1 or 7). No goods or services line. Signed by \" RESOLVED: msg-08 - parish confirmed 1,500 by phone; matches bank statement check #2207.",
+   "nodes": [
+    "ev:ev-1049",
+    "line:v3:SchA.11"
+   ],
+   "evidence": [
+    "page:D64#1",
+    "msg:msg-08"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-007",
+    "F-113"
+   ]
+  },
+  {
+   "id": "F-003",
+   "check": "X3-blank-read-as-zero",
+   "title": "D28 Lot N1 cost basis: blank field read as 0.00 (confidence 0.98)",
+   "severity": "warning",
+   "origin": "extraction",
+   "detail": "The printed field is blank (printed: \"N1 Corvane Systems Inc (RSU) 400 sh acquired 2025-02-15 sold 2025-02-18 proceeds 19,240.00 basis (not reported) short-term noncovered; N2 Corvane Systems Inc (ESPP) 150 s...\"). A blank basis is unknown, not zero; used by F8949.B.N1.",
+   "nodes": [
+    "ev:ev-0498",
+    "line:v3:F8949.B.N1"
+   ],
+   "evidence": [
+    "page:D28#3"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-012"
+   ]
+  },
+  {
+   "id": "F-004",
+   "check": "X3-blank-read-as-zero",
+   "title": "D28 Lot N3 cost basis: blank field read as 0.00 (confidence 0.98)",
+   "severity": "warning",
+   "origin": "extraction",
+   "detail": "The printed field is blank (printed: \"N3 Corvane Systems Inc (RSU) 400 sh acquired 2025-05-15 sold 2025-05-20 proceeds 18,480.00 basis (not reported) short-term noncovered; N4 Corvane Systems Inc (RSU) 300 sh...\"). A blank basis is unknown, not zero; used by F8949.B.N3.",
+   "nodes": [
+    "ev:ev-0516",
+    "line:v3:F8949.B.N3"
+   ],
+   "evidence": [
+    "page:D28#3"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-013"
+   ]
+  },
+  {
+   "id": "F-005",
+   "check": "X3-blank-read-as-zero",
+   "title": "D28 Lot N4 cost basis: blank field read as 0.00 (confidence 0.98)",
+   "severity": "warning",
+   "origin": "extraction",
+   "detail": "The printed field is blank (printed: \"N4 Corvane Systems Inc (RSU) 300 sh acquired 2023-08-15 sold 2025-08-12 proceeds 15,300.00 basis (not reported) long-term noncovered; N5 Northlake Total Market Index Fund...\"). A blank basis is unknown, not zero; used by F8949.E.N4.",
+   "nodes": [
+    "ev:ev-0525",
+    "line:v3:F8949.E.N4"
+   ],
+   "evidence": [
+    "page:D28#3"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-014"
+   ]
+  },
+  {
+   "id": "F-006",
+   "check": "X4-low-confidence-in-use",
+   "title": "D35 C6 cost basis read at confidence 0.6",
+   "severity": "warning",
+   "origin": "extraction",
+   "detail": "Value None (read as '') feeds F8949.H.C6. Printed: \"CSV export, cost basis by lot (FIFO). Sold lots: C1 BTC 0.0412 acquired 2023-02-11 cost 912.00 sold 2025-01-09 proceeds 3,940.00; C2 ETH 1.25 acquired 2024-11-30 cost 4,680.00 sold 2025-02-14 proceeds\"",
+   "nodes": [
+    "ev:ev-0919",
+    "line:v3:F8949.H.C6"
+   ],
+   "evidence": [
+    "page:D35#1"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-023",
+    "F-104"
+   ]
+  },
+  {
+   "id": "F-007",
+   "check": "X4-low-confidence-in-use",
+   "title": "D64 Cash gift amount read at confidence 0.41",
+   "severity": "info",
+   "origin": "extraction",
+   "detail": "Value 1,500 (read as '1,500.00') feeds SchA.11. Printed: \"Handwritten receipt on parish letterhead dated 12/21/2025: 'Received from the Okafor-Lindqvist family, $?,500.00 - thank you.' The first digit is ambiguous (could be read as 1 or 7). No goods or servi\" RESOLVED: msg-08 - parish confirmed 1,500 by phone; matches bank statement check #2207.",
+   "nodes": [
+    "ev:ev-1049",
+    "line:v3:SchA.11"
+   ],
+   "evidence": [
+    "page:D64#1",
+    "msg:msg-08"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-002",
+    "F-113"
+   ]
+  },
+  {
+   "id": "F-008",
+   "check": "X5-duplicate-page-counted-twice",
+   "title": "D23 page 3 is a second scan of page 2; SchC.44a counts it twice",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Pages 2 and 3 of 'Vehicle mileage log 2025 (scanned, 4 pages)' carry the same content (page 3 begins: \"(Second scan of the May-Aug sheet - same handwriting and coffee stain as page 2.) Mileage \"). SchC.44a = 11,800 includes 3,700 from page 3 on top of the same 3,700 from page 2.",
+   "nodes": [
+    "line:v3:SchC.44a",
+    "ev:ev-0404",
+    "page:D23#3",
+    "line:v3:SchC.9"
+   ],
+   "evidence": [
+    "page:D23#2",
+    "page:D23#3"
+   ],
+   "corrections": [
+    {
+     "line": "SchC.44a",
+     "current": 11800,
+     "proposed": 8100.0,
+     "category": "none"
+    },
+    {
+     "line": "SchC.9",
+     "current": 8260,
+     "proposed": 5670,
+     "category": "schc_profit"
+    }
+   ],
+   "federal_effect": 919,
+   "california_effect": 80,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-057",
+    "F-063"
+   ]
+  },
+  {
+   "id": "F-009",
+   "check": "X6-partial-extraction",
+   "title": "D31 page 32 not read: lot M18 (Ironwood REIT (fractional share cash in lieu)) missing from Form 8949",
+   "severity": "error",
+   "origin": "extraction",
+   "detail": "Page 32 ('Additional transactions') was not read by the pipeline. The page prints lot M18: acquired 2025-01-14, sold 2025-12-15, proceeds 250.00, basis 310.00, short-term noncovered. It belongs in Form 8949 box B; gain -60.",
+   "nodes": [
+    "doc:D31",
+    "page:D31#32",
+    "line:v3:F8949.B.total"
+   ],
+   "evidence": [
+    "page:D31#32"
+   ],
+   "corrections": [
+    {
+     "line": "F8949.B.M18",
+     "current": null,
+     "proposed": -60.0,
+     "category": "stcg"
+    }
+   ],
+   "federal_effect": -21,
+   "california_effect": -2,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-010",
+   "check": "X8-same-income-two-documents",
+   "title": "1,840 reported on D28 and D29 for account ending 7731 - counted twice in SchB.2",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "SchB.1.1 (D28: Consolidated 1099 2025, account ending 7731, Ngozi Okafor. 1099-DIV: 1a total ordinary dividends 2,940.00; 1b qualified ...) and SchB.1.2 (D29: Form 1099-INT 2025. Payer Northlake Bank, N.A. (bank sweep program for Northlake Securities account ending 7731). Recipient Ngozi Okafor. Bo...) are the same income for the same account. SchB.2 adds both.",
+   "nodes": [
+    "line:v3:SchB.1.1",
+    "line:v3:SchB.1.2",
+    "line:v3:SchB.2",
+    "ev:ev-0492",
+    "ev:ev-0538"
+   ],
+   "evidence": [
+    "page:D28#1",
+    "page:D29#1"
+   ],
+   "corrections": [
+    {
+     "line": "SchB.1.2",
+     "current": 1840.0,
+     "proposed": 0,
+     "category": "interest"
+    }
+   ],
+   "federal_effect": -640,
+   "california_effect": -127,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-035"
+   ]
+  },
+  {
+   "id": "F-011",
+   "check": "X9-duplicate-document",
+   "title": "D10 duplicates D09 (2025 Form W-2 - Halvorsen Data LLC (Ngozi Okafor))",
+   "severity": "info",
+   "origin": "document",
+   "detail": "100% of extracted fields identical. D09: used; D10: explained_in_note (F1040.1a: D10 is a second image of the Halvorsen W-2 (D09); counted once.).",
+   "nodes": [
+    "doc:D09",
+    "doc:D10"
+   ],
+   "evidence": [
+    "doc:D09",
+    "doc:D10"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-012",
+   "check": "J1-supplemental-basis-not-applied",
+   "title": "F8949.B.N1: RSU lot taxed on full proceeds - supplemental basis 19,100 not applied",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Broker basis is blank (noncovered RSU shares). D11 lot RSU-2502 (acquired 2025-02-15) gives adjusted basis 19,100 - the vest value already taxed as W-2 wages. Gain should be 140, not 19,240. The engine matched the ESPP lot but not the RSU lots.",
+   "nodes": [
+    "line:v3:F8949.B.N1",
+    "ev:ev-0498",
+    "ev:ev-0066"
+   ],
+   "evidence": [
+    "page:D11#2",
+    "page:D28#3"
+   ],
+   "corrections": [
+    {
+     "line": "F8949.B.N1",
+     "current": 19240.0,
+     "proposed": 140.0,
+     "category": "stcg"
+    }
+   ],
+   "federal_effect": -6647,
+   "california_effect": -649,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-003"
+   ]
+  },
+  {
+   "id": "F-013",
+   "check": "J1-supplemental-basis-not-applied",
+   "title": "F8949.B.N3: RSU lot taxed on full proceeds - supplemental basis 19,100 not applied",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Broker basis is blank (noncovered RSU shares). D11 lot RSU-2505 (acquired 2025-05-15) gives adjusted basis 19,100 - the vest value already taxed as W-2 wages. Gain should be -620, not 18,480. The engine matched the ESPP lot but not the RSU lots.",
+   "nodes": [
+    "line:v3:F8949.B.N3",
+    "ev:ev-0516",
+    "ev:ev-0068"
+   ],
+   "evidence": [
+    "page:D11#2",
+    "page:D28#3"
+   ],
+   "corrections": [
+    {
+     "line": "F8949.B.N3",
+     "current": 18480.0,
+     "proposed": -620.0,
+     "category": "stcg"
+    }
+   ],
+   "federal_effect": -6647,
+   "california_effect": -649,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-004"
+   ]
+  },
+  {
+   "id": "F-014",
+   "check": "J1-supplemental-basis-not-applied",
+   "title": "F8949.E.N4: RSU lot taxed on full proceeds - supplemental basis 9,420 not applied",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Broker basis is blank (noncovered RSU shares). D11 lot RSU-2308 (acquired 2023-08-15) gives adjusted basis 9,420 - the vest value already taxed as W-2 wages. Gain should be 5,880, not 15,300. The engine matched the ESPP lot but not the RSU lots.",
+   "nodes": [
+    "line:v3:F8949.E.N4",
+    "ev:ev-0525",
+    "ev:ev-0070"
+   ],
+   "evidence": [
+    "page:D11#2",
+    "page:D28#3"
+   ],
+   "corrections": [
+    {
+     "line": "F8949.E.N4",
+     "current": 15300.0,
+     "proposed": 5880.0,
+     "category": "ltcg"
+    }
+   ],
+   "federal_effect": -2242,
+   "california_effect": -320,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-005"
+   ]
+  },
+  {
+   "id": "F-015",
+   "check": "J2-card-receipts-already-in-books",
+   "title": "SchC.1 counts the 1099-K 12,400 twice",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Books revenue 151,300 already includes the Paywell card deposits: the transaction detail says Atlas paid 41,200, of which 12,400 arrived through Paywell and was deposited gross. The engine could not match it (R-SCHC-GROSS) and added it again: 163,700 = 151,300 + 12,400. Gross receipts reconcile to 1099-NEC 142,000 + non-1099 clients 9,300 = 151,300.",
+   "nodes": [
+    "line:v3:SchC.1",
+    "ev:ev-0127",
+    "ev:ev-0109"
+   ],
+   "evidence": [
+    "page:D15#3",
+    "page:D21#1",
+    "page:D14#1"
+   ],
+   "corrections": [
+    {
+     "line": "SchC.1",
+     "current": 163700,
+     "proposed": 151300.0,
+     "category": "schc_profit"
+    }
+   ],
+   "federal_effect": -4402,
+   "california_effect": -384,
+   "effect_note": "Also the item the IRS examines in 2028 (Letter 566): this reconciliation is the answer.",
+   "generic": false,
+   "related": [
+    "F-056"
+   ]
+  },
+  {
+   "id": "F-016",
+   "check": "J3-sehi-eligible-for-employer-plan",
+   "title": "Sch1.17 deducts 14,400 although Erik could join Ngozi's employer plan",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "qa-25: \"Yes - both of Ngozi's employers offer family coverage, but Erik kept his own individual plan because he likes his doctors.\" Both W-2s show employer health coverage (box 12 DD). The prior preparer took no deduction in 2024 for the same reason (2024 note: No self-employed health insurance deduction: Erik was covered on Ngozi's employer plan in 2024.)",
+   "nodes": [
+    "line:v3:Sch1.17",
+    "qa:qa-25"
+   ],
+   "evidence": [
+    "qa:qa-25",
+    "ev:ev-0025",
+    "ev:ev-0044",
+    "py:/return_2024/notes"
+   ],
+   "corrections": [
+    {
+     "line": "Sch1.17",
+     "current": 14400,
+     "proposed": 0,
+     "category": "adjustment"
+    }
+   ],
+   "federal_effect": 4464,
+   "california_effect": 605,
+   "effect_note": "Adjustment rate; the QBI deduction also moves (not captured by the rate).",
+   "generic": false,
+   "related": [
+    "F-054"
+   ]
+  },
+  {
+   "id": "F-017",
+   "check": "J4-repair-is-an-improvement",
+   "title": "HVAC replacement 11,000 expensed as a repair at 1450 Fremont Way",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Invoice D47: removed the failed furnace and condenser, installed a new heat pump system with air handler, line set and thermostat (permit B25-31877). Call notes confirm the whole system was replaced. That is a restoration of a building system - capitalize. The engine kept it inside repairs because the owner statement lists it there. The what-if 'hvac_improvement' is the engine's own result for the correct treatment.",
+   "nodes": [
+    "line:v3:SchE.14A",
+    "ev:ev-1001",
+    "doc:D47",
+    "line:v3:F4562-E.total-A",
+    "line:v3:SchE.18A",
+    "line:v3:SchE.20A",
+    "line:v3:SchE.21A",
+    "line:v3:F8582.1b"
+   ],
+   "evidence": [
+    "page:D47#1",
+    "call:call-01",
+    "qa:qa-37"
+   ],
+   "corrections": [
+    {
+     "line": "F4562-E.total-A",
+     "current": 13891,
+     "proposed": 14041,
+     "category": null
+    },
+    {
+     "line": "SchE.14A",
+     "current": 13300,
+     "proposed": 2300,
+     "category": null
+    },
+    {
+     "line": "SchE.18A",
+     "current": 13891,
+     "proposed": 14041,
+     "category": null
+    },
+    {
+     "line": "SchE.20A",
+     "current": 53157,
+     "proposed": 42307,
+     "category": null
+    },
+    {
+     "line": "SchE.21A",
+     "current": -15957,
+     "proposed": -5107,
+     "category": null
+    },
+    {
+     "line": "F8582.1b",
+     "current": -22480,
+     "proposed": -11630,
+     "category": null
+    }
+   ],
+   "federal_effect": 3633,
+   "california_effect": 896,
+   "effect_note": "Engine-computed what-if (what_if.alternatives.hvac_improvement).",
+   "generic": false,
+   "related": [
+    "F-067",
+    "F-068",
+    "F-069",
+    "F-080"
+   ]
+  },
+  {
+   "id": "F-018",
+   "check": "J5-vehicle-donation-limited-to-proceeds",
+   "title": "Car donation claimed at 6,000 (client's Blue Book estimate); 1098-C proceeds 2,900",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Form 1098-C box 4a is checked: the charity sold the car at arm's length on 09/09/2025 for 2,900. The engine used the value from qa-39 (R-NONCASH-GIFT: value stated by the donor).",
+   "nodes": [
+    "line:v3:F8283.A1.vehicle",
+    "ev:ev-1054",
+    "qa:qa-39"
+   ],
+   "evidence": [
+    "page:D66#1",
+    "call:call-01"
+   ],
+   "corrections": [
+    {
+     "line": "F8283.A1.vehicle",
+     "current": 6000,
+     "proposed": 2900.0,
+     "category": "itemized"
+    }
+   ],
+   "federal_effect": 806,
+   "california_effect": 149,
+   "effect_note": "Also an item under IRS examination in 2028.",
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-019",
+   "check": "J6-purchase-year-property-tax",
+   "title": "Home property tax 13,420 includes the seller's 6,912 (bought 07/08/2025)",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Travis County billed 13,420 for all of 2025 (D58: owner of record on 01/01/2025 was the prior owner). At closing the seller credited the buyers 6,912 for 01/01-07/07 (D54). The buyers' deduction is 6,508. SALT drops below the 40,000 cap, so the federal deduction falls by 5,622.",
+   "nodes": [
+    "line:v3:SchA.5b",
+    "line:v3:SchA.5e",
+    "ev:ev-1027"
+   ],
+   "evidence": [
+    "page:D54#1",
+    "page:D58#1",
+    "page:D57#1"
+   ],
+   "corrections": [
+    {
+     "line": "SchA.5b",
+     "current": 13420,
+     "proposed": 6508.0,
+     "category": "salt"
+    },
+    {
+     "line": "SchA.5e",
+     "current": 40000,
+     "proposed": 34378.0,
+     "category": "itemized"
+    }
+   ],
+   "federal_effect": 1462,
+   "california_effect": 332,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-020",
+   "check": "J7-interest-counted-twice",
+   "title": "Mortgage interest includes payoff interest 2,150 twice",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Lonestar's 1098 box 1 (13,900) 'includes ... interest paid at payoff 11/20/2025'; the payoff statement says the same interest 'is reported on the 2025 Form 1098'. R-MORTGAGE-INTEREST adds every 1098 and lender statement, so 2,150 is in SchA.8a twice.",
+   "nodes": [
+    "line:v3:SchA.8a",
+    "ev:ev-1032",
+    "ev:ev-1029"
+   ],
+   "evidence": [
+    "page:D55#1",
+    "page:D56#1"
+   ],
+   "corrections": [
+    {
+     "line": "SchA.8a",
+     "current": 21847,
+     "proposed": 19697.0,
+     "category": "itemized"
+    }
+   ],
+   "federal_effect": 559,
+   "california_effect": 103,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-021",
+   "check": "J8-business-use-not-applied",
+   "title": "Phone, internet and Spotify deducted at 100% (client says 70% / 50% / personal)",
+   "severity": "warning",
+   "origin": "client",
+   "detail": "Call 03/26: Mobile plan covers 4 family lines; Erik estimates his business share is 70%. | Home internet is shared with the family; business use about 50%. | Spotify Family in software is personal - booked by mistake.. Books deduct telephone 2,160 (family plan, 4 lines) and home internet 1,320 in full and include Spotify Family 216 in software.",
+   "nodes": [
+    "line:v3:SchC.25",
+    "line:v3:SchC.27a.1",
+    "call:call-01"
+   ],
+   "evidence": [
+    "call:call-01",
+    "page:D15#1",
+    "page:D15#2"
+   ],
+   "corrections": [
+    {
+     "line": "SchC.25",
+     "current": 3480,
+     "proposed": 2172,
+     "category": "schc_profit"
+    },
+    {
+     "line": "SchC.27a.1",
+     "current": 6850,
+     "proposed": 6634.0,
+     "category": "schc_profit"
+    }
+   ],
+   "federal_effect": 541,
+   "california_effect": 47,
+   "effect_note": "Judgment: percentages are the client's estimate - record the basis.",
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-022",
+   "check": "J9-state-source-wages-after-move",
+   "title": "California-source wages 218,400 include Halvorsen wages earned in Texas",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "R-CA-WAGES-SOURCE uses W-2 box 16. Halvorsen kept California as the work state through 09/30 by mistake (D09 note; qa-45). Residency ended 2025-07-14. The 07/18 paystub (D73) shows California wages from 06/02 to the move of 22,469. California-source wages = Corvane 107,100 + 22,469 = 129,569.",
+   "nodes": [
+    "line:v3:SchCA540NR.1.E",
+    "ev:ev-1081",
+    "ev:ev-0047"
+   ],
+   "evidence": [
+    "page:D73#1",
+    "page:D09#1",
+    "qa:qa-45",
+    "qa:qa-02"
+   ],
+   "corrections": [
+    {
+     "line": "SchCA540NR.1.E",
+     "current": 218400,
+     "proposed": 129569.0,
+     "category": "ca_source_income"
+    }
+   ],
+   "federal_effect": 0,
+   "california_effect": -5685,
+   "effect_note": "California withholding after the move is still a credit (refund), unchanged.",
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-023",
+   "check": "J10-client-supplied-basis",
+   "title": "Crypto lot C6 at zero basis; client reports 3,050 paid 03/15/2021",
+   "severity": "warning",
+   "origin": "client",
+   "detail": "msg-07: \"About the crypto lot with no cost: that BTC was bought on another exchange in March 2021 for about 3,050 and moved to Coinhaven in June. That exchange shut down so I only have a bank statement line showing 3,050 to 'CryptoNorth' on 03/15/2021.\" With that basis the lot is long-term (held since 2021), gain 2,275 instead of a 5,325 short-term gain. Evidence is one bank statement line - decide and record whether it is sufficient.",
+   "nodes": [
+    "line:v3:F8949.H.C6",
+    "msg:msg-07",
+    "ev:ev-0918",
+    "ev:ev-0919"
+   ],
+   "evidence": [
+    "msg:msg-07",
+    "page:D35#1"
+   ],
+   "corrections": [
+    {
+     "line": "F8949.H.C6",
+     "current": 5325.0,
+     "proposed": 0,
+     "category": "stcg"
+    },
+    {
+     "line": "F8949.K.C6",
+     "current": null,
+     "proposed": 2275.0,
+     "category": "ltcg"
+    }
+   ],
+   "federal_effect": -1312,
+   "california_effect": -104,
+   "effect_note": null,
+   "generic": false,
+   "related": [
+    "F-006",
+    "F-104"
+   ]
+  },
+  {
+   "id": "F-024",
+   "check": "J11-client-answer-contradicts-records",
+   "title": "Client says no prior IRA basis; 2024 Form 8606 and 2024 Form 5498 show 7,000",
+   "severity": "info",
+   "origin": "client",
+   "detail": "qa-31: \"Ngozi put 7,000 in for 2025 and converted it. Prior basis: none that I know of - we started doing this in 2025. Traditional IRA balance at year end is zero.\" The 2024 return (line F8606.14 = 7,000) and the 2024 Form 5498 (contribution made 02/12/2025 for 2024) support the engine's 7,000 prior basis; conversion taxable amount 26 is right. Confirm with the client and record it.",
+   "nodes": [
+    "line:v3:F8606.2",
+    "qa:qa-31"
+   ],
+   "evidence": [
+    "ev:ev-0991",
+    "py:/basis_records/ira_nondeductible_basis_ngozi/0"
+   ],
+   "corrections": [],
+   "federal_effect": 0,
+   "california_effect": 0,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-025",
+   "check": "J11-client-answer-contradicts-records",
+   "title": "Client says no investments sold; three brokers report 283 sales",
+   "severity": "info",
+   "origin": "client",
+   "detail": "qa-14: \"No\" Also qa-15: \"Erik has some crypto on Coinhaven. We didn't really sell, just moved things around.\" (12 crypto sales). The documents govern; the answers show what the client does not track (e.g. direct indexing).",
+   "nodes": [
+    "qa:qa-14",
+    "qa:qa-15",
+    "doc:D74"
+   ],
+   "evidence": [
+    "doc:D28",
+    "doc:D31",
+    "doc:D74",
+    "doc:D34"
+   ],
+   "corrections": [],
+   "federal_effect": 0,
+   "california_effect": 0,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-026",
+   "check": "J12-outside-filings",
+   "title": "Form 3520 for 2023 - foreign inheritance from Birgitta Lindqvist (account opened 09/2023)",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Prior preparer left it open (D07). D36 shows the inheritance; qa-08 only asked about 2025. Possible late-filing exposure - raise with the client.",
+   "nodes": [
+    "page:D36#1",
+    "py:/prior_preparer_workpaper/open_items_left_by_prior_preparer"
+   ],
+   "evidence": [
+    "page:D36#1",
+    "py:/prior_preparer_workpaper/open_items_left_by_prior_preparer"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-027",
+   "check": "J12-outside-filings",
+   "title": "FinCEN 114 (FBAR) for 2025 - Sparbanken max SEK 1,452,300",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Outside the engagement (D01). Client filed it themselves in 2024. Due 10/15/2026.",
+   "nodes": [
+    "page:D01#1",
+    "ev:ev-0962"
+   ],
+   "evidence": [
+    "page:D01#1",
+    "ev:ev-0962"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-028",
+   "check": "J12-outside-filings",
+   "title": "Forms 1099-NEC for contractors Quintero 4,800 and Patel 2,600",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Required, not filed (qa-23, D27). Late since 02/02/2026; outside the engagement. Advise the client in writing.",
+   "nodes": [
+    "qa:qa-23",
+    "page:D27#1"
+   ],
+   "evidence": [
+    "qa:qa-23",
+    "page:D27#1"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-029",
+   "check": "J12-outside-filings",
+   "title": "Ada's own 2025 Form 1040",
+   "severity": "info",
+   "origin": "process",
+   "detail": "She checked 'someone can claim you' - consistent with claiming her as a dependent.",
+   "nodes": [
+    "person:ada"
+   ],
+   "evidence": [
+    "person:ada"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-030",
+   "check": "J12-outside-filings",
+   "title": "Oregon composite (Woodworks) and Arizona composite (Ridgeline)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Filed by the entities; Oregon tax 1,580 used for the Schedule S credit; no Arizona filing needed by the partner (D38).",
+   "nodes": [
+    "page:D39#2",
+    "page:D38#1"
+   ],
+   "evidence": [
+    "page:D39#2",
+    "page:D38#1"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": false,
+   "related": []
+  },
+  {
+   "id": "F-031",
+   "check": "R6-fx-rate-period",
+   "title": "SchB.1.6 converts SEK 18,450 at the 2024 average rate",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Converted at 10.56 (2024_average); the 2025 average is 9.86. 1,747 should be 1,871.",
+   "nodes": [
+    "line:v3:SchB.1.6",
+    "fx:SEK.2024_average"
+   ],
+   "evidence": [
+    "fx:SEK.2025_average"
+   ],
+   "corrections": [
+    {
+     "line": "SchB.1.6",
+     "current": 1747,
+     "proposed": 1871,
+     "category": "interest"
+    }
+   ],
+   "federal_effect": 43,
+   "california_effect": 9,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-055"
+   ]
+  },
+  {
+   "id": "F-032",
+   "check": "P1-federal-payments-vs-transcript",
+   "title": "Federal estimated payments 13,000 vs IRS transcript 12,000",
+   "severity": "error",
+   "origin": "client",
+   "detail": "The engine took the fourth payment from the client's questionnaire answer (qa-41: \"Paid January 14, 2026 - 4,000 I think.\") because no confirmation was uploaded. The IRS transcript shows 2025-04-15 3,000, 2025-06-16 3,000, 2025-09-15 3,000, 2026-01-15 3,000.",
+   "nodes": [
+    "line:v3:F1040.26",
+    "qa:qa-41"
+   ],
+   "evidence": [
+    "agency:/irs_account_transcript_2025"
+   ],
+   "corrections": [
+    {
+     "line": "F1040.26",
+     "current": 13000,
+     "proposed": 12000,
+     "category": "payment"
+    }
+   ],
+   "federal_effect": 1000,
+   "california_effect": 0,
+   "effect_note": "Payments change the balance due 1:1; the 2210 penalty also moves slightly.",
+   "generic": true,
+   "related": [
+    "F-050"
+   ]
+  },
+  {
+   "id": "F-033",
+   "check": "P2-california-payments-vs-ftb",
+   "title": "California estimated payments 14,000 vs FTB account 10,500",
+   "severity": "error",
+   "origin": "engine",
+   "detail": "Rule R-CA-ESTIMATED-PAYMENTS counts every FTB payment in the date window regardless of the tax year it was designated to. 2025-09-15 3,500 was designated tax year 2024 (ev-1076, printed on D68). FTB: 2025-09-15 3,500: Web Pay payment designated tax year 2024; held as a 2024 credit",
+   "nodes": [
+    "line:v3:F540NR.72",
+    "ev:ev-1076"
+   ],
+   "evidence": [
+    "agency:/ftb_account",
+    "page:D68#1"
+   ],
+   "corrections": [
+    {
+     "line": "F540NR.72",
+     "current": 14000,
+     "proposed": 10500,
+     "category": "ca_payment"
+    }
+   ],
+   "federal_effect": 0,
+   "california_effect": 3500,
+   "effect_note": "Balance changes 1:1. Option: ask FTB to move the 2024 credit to 2025 (judgment, record it).",
+   "generic": true,
+   "related": [
+    "F-093"
+   ]
+  },
+  {
+   "id": "F-034",
+   "check": "P3-identity-vs-documents",
+   "title": "Theo Lindqvist-Okafor: SSN on the return 666-74-3309 disagrees with D06, D71",
+   "severity": "error",
+   "origin": "client",
+   "detail": "Household record (entered by the client) has 666-74-3309; D06 prints 666-74-3390; D71 prints 666-74-3390. The return would be rejected (dependent TIN/name mismatch).",
+   "nodes": [
+    "person:theo",
+    "ev:ev-0012",
+    "ev:ev-1080"
+   ],
+   "evidence": [
+    "page:D06#1",
+    "page:D71#1"
+   ],
+   "corrections": [
+    {
+     "line": "household.theo.ssn",
+     "current": "666-74-3309",
+     "proposed": "666-74-3390",
+     "category": "none"
+    }
+   ],
+   "federal_effect": 0,
+   "california_effect": 0,
+   "effect_note": "No tax effect; blocks e-file.",
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-035",
+   "check": "P5-prior-year-variance",
+   "title": "SchB.1.2: new payer in 2025 (Interest - Northlake Bank, N.A.) 1,840",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "No 2024 counterpart. Confirm it is new income, not a second report of an existing account. Partly explained by F-010.",
+   "nodes": [
+    "line:v3:SchB.1.2"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-010"
+   ]
+  },
+  {
+   "id": "F-036",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.1a: 156,039 (2024) -> 212,400 (2025), +56,361",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.1a"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.1a"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-037",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.2b: 2,310 (2024) -> 6,450 (2025), +4,140",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.2b"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.2b"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-038",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.7: -3,000 (2024) -> 185,027 (2025), +188,027",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.7"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.7"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-039",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.9: 233,489 (2024) -> 480,987 (2025), +247,498",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.9"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.9"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-040",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.10: 5,080 (2024) -> 35,397 (2025), +30,317",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.10"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.10"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-041",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.11: 228,409 (2024) -> 445,590 (2025), +217,181",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.11"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.11"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-042",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.12: 29,200 (2024) -> 85,706 (2025), +56,506",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.12"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.12"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-043",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.13: 16,744 (2024) -> 12,971 (2025), -3,773",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.13"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.13"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-044",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.15: 182,465 (2024) -> 346,913 (2025), +164,448",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.15"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.15"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-045",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.16: 29,898 (2024) -> 59,727 (2025), +29,829",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.16"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.16"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-046",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.19: 2,500 (2024) -> 400 (2025), -2,100",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.19"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.19"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-047",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.23: 10,159 (2024) -> 19,160 (2025), +9,001",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.23"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.23"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-048",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.24: 37,557 (2024) -> 81,962 (2025), +44,405",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.24"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.24"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-049",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.25a: 31,950 (2024) -> 25,400 (2025), -6,550",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.25a"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.25a"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-050",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.26: 6,000 (2024) -> 13,000 (2025), +7,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-032.",
+   "nodes": [
+    "line:v3:F1040.26"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.26"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-032"
+   ]
+  },
+  {
+   "id": "F-051",
+   "check": "P5-prior-year-variance",
+   "title": "F1040.33: 37,950 (2024) -> 77,742 (2025), +39,792",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F1040.33"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F1040.33"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-052",
+   "check": "P5-prior-year-variance",
+   "title": "Sch1.3: 71,900 (2024) -> 81,854 (2025), +9,954",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:Sch1.3"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/Sch1.3"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-053",
+   "check": "P5-prior-year-variance",
+   "title": "Sch1.5: 0 (2024) -> -11,830 (2025), -11,830",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:Sch1.5"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/Sch1.5"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-054",
+   "check": "P5-prior-year-variance",
+   "title": "Sch1.17: 0 (2024) -> 14,400 (2025), +14,400",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-016.",
+   "nodes": [
+    "line:v3:Sch1.17"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/Sch1.17"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-016"
+   ]
+  },
+  {
+   "id": "F-055",
+   "check": "P5-prior-year-variance",
+   "title": "SchB.1.6: 350 (2024) -> 1,747 (2025), +1,397",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-031.",
+   "nodes": [
+    "line:v3:SchB.1.6"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchB.1.6"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-031"
+   ]
+  },
+  {
+   "id": "F-056",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.1: 128,400 (2024) -> 163,700 (2025), +35,300",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-015.",
+   "nodes": [
+    "line:v3:SchC.1"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.1"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-015"
+   ]
+  },
+  {
+   "id": "F-057",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.9: 4,958 (2024) -> 8,260 (2025), +3,302",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-008.",
+   "nodes": [
+    "line:v3:SchC.9"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.9"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-008"
+   ]
+  },
+  {
+   "id": "F-058",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.11: 12,400 (2024) -> 7,400 (2025), -5,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchC.11"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.11"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-059",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.24a: 6,100 (2024) -> 4,520 (2025), -1,580",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchC.24a"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.24a"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-060",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.28: 55,000 (2024) -> 80,646 (2025), +25,646",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchC.28"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.28"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-061",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.29: 73,400 (2024) -> 83,054 (2025), +9,654",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchC.29"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.29"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-062",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.31: 71,900 (2024) -> 81,854 (2025), +9,954",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchC.31"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.31"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-063",
+   "check": "P5-prior-year-variance",
+   "title": "SchC.44a: 7,400 (2024) -> 11,800 (2025), +4,400",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-008.",
+   "nodes": [
+    "line:v3:SchC.44a"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchC.44a"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-008"
+   ]
+  },
+  {
+   "id": "F-064",
+   "check": "P5-prior-year-variance",
+   "title": "SchD.7: -6,200 (2024) -> 38,146 (2025), +44,346",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchD.7"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchD.7"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-065",
+   "check": "P5-prior-year-variance",
+   "title": "SchD.15: -11,000 (2024) -> 146,881 (2025), +157,881",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchD.15"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchD.15"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-066",
+   "check": "P5-prior-year-variance",
+   "title": "SchD.16: -17,200 (2024) -> 185,027 (2025), +202,227",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchD.16"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchD.16"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-067",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.14A: 3,900 (2024) -> 13,300 (2025), +9,400",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-017.",
+   "nodes": [
+    "line:v3:SchE.14A"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.14A"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-017"
+   ]
+  },
+  {
+   "id": "F-068",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.20A: 44,019 (2024) -> 53,157 (2025), +9,138",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-017.",
+   "nodes": [
+    "line:v3:SchE.20A"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.20A"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-017"
+   ]
+  },
+  {
+   "id": "F-069",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.21A: -7,419 (2024) -> -15,957 (2025), -8,538",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-017.",
+   "nodes": [
+    "line:v3:SchE.21A"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.21A"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-017"
+   ]
+  },
+  {
+   "id": "F-070",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.3B: 18,128 (2024) -> 20,250 (2025), +2,122",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.3B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.3B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-071",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.12B: 9,200 (2024) -> 6,900 (2025), -2,300",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.12B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.12B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-072",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.14B: 6,800 (2024) -> 1,800 (2025), -5,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.14B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.14B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-073",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.16B: 6,900 (2024) -> 5,544 (2025), -1,356",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.16B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.16B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-074",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.18B: 9,258 (2024) -> 7,329 (2025), -1,929",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.18B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.18B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-075",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.20B: 38,128 (2024) -> 26,773 (2025), -11,355",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.20B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.20B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-076",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.21B: -20,000 (2024) -> -6,523 (2025), +13,477",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.21B"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.21B"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-077",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.22A: -9,674 (2024) -> -22,257 (2025), -12,583",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.22A"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.22A"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-078",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.26: -24,800 (2024) -> -38,630 (2025), -13,830",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.26"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.26"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-079",
+   "check": "P5-prior-year-variance",
+   "title": "SchE.41: 0 (2024) -> -11,830 (2025), -11,830",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchE.41"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchE.41"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-080",
+   "check": "P5-prior-year-variance",
+   "title": "F8582.1b: -27,419 (2024) -> -22,480 (2025), +4,939",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-017.",
+   "nodes": [
+    "line:v3:F8582.1b"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F8582.1b"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-017"
+   ]
+  },
+  {
+   "id": "F-081",
+   "check": "P5-prior-year-variance",
+   "title": "F8582.1c: -13,531 (2024) -> -16,150 (2025), -2,619",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F8582.1c"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F8582.1c"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-082",
+   "check": "P5-prior-year-variance",
+   "title": "F8582.4: -16,150 (2024) -> 93,210 (2025), +109,360",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F8582.4"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F8582.4"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-083",
+   "check": "P5-prior-year-variance",
+   "title": "F8606.3: 7,000 (2024) -> 14,000 (2025), +7,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F8606.3"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F8606.3"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-084",
+   "check": "P5-prior-year-variance",
+   "title": "F8606.14: 7,000 (2024) -> 0 (2025), -7,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F8606.14"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F8606.14"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-085",
+   "check": "P5-prior-year-variance",
+   "title": "F2441.2: 6,200 (2024) -> 9,600 (2025), +3,400",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F2441.2"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F2441.2"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-086",
+   "check": "P5-prior-year-variance",
+   "title": "SchSE.12: 10,159 (2024) -> 11,565 (2025), +1,406",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:SchSE.12"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/SchSE.12"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-087",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.13: 228,409 (2024) -> 445,590 (2025), +217,181",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.13"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.13"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-088",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.17: 230,809 (2024) -> 481,096 (2025), +250,287",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.17"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.17"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-089",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.19: 219,729 (2024) -> 421,970 (2025), +202,241",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.19"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.19"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-090",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.31: 13,740 (2024) -> 32,328 (2025), +18,588",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.31"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.31"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-091",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.64: 12,520 (2024) -> 18,874 (2025), +6,354",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.64"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.64"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-092",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.71: 8,280 (2024) -> 13,130 (2025), +4,850",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation.",
+   "nodes": [
+    "line:v3:F540NR.71"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.71"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-093",
+   "check": "P5-prior-year-variance",
+   "title": "F540NR.72: 3,000 (2024) -> 14,000 (2025), +11,000",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Over the firm threshold (10% and 1,000). Needs an explanation. Partly explained by F-033.",
+   "nodes": [
+    "line:v3:F540NR.72"
+   ],
+   "evidence": [
+    "py:/return_2024/lines/F540NR.72"
+   ],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-033"
+   ]
+  },
+  {
+   "id": "F-094",
+   "check": "P6-document-completeness",
+   "title": "D07 not extracted: 2024 workpaper file from prior preparer (export)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Narrative workpaper export; its content is reproduced as structured data in prior_years.prior_preparer_workpaper.",
+   "nodes": [
+    "doc:D07"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-095",
+   "check": "P6-document-completeness",
+   "title": "D13 not reflected in v3: Form 3922 - ESPP transfer (Corvane)",
+   "severity": "warning",
+   "origin": "process",
+   "detail": "Received 2026-02-14; v3 computed 2026-06-23. Engine lists it as used but no line cites its values. Every document must be used or carry a reason.",
+   "nodes": [
+    "doc:D13"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-096",
+   "check": "P6-document-completeness",
+   "title": "D15 not reflected in v3: Lindqvist Studio - transaction detail for selected accounts",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Received 2026-02-11; v3 computed 2026-06-23. Engine lists it as used but no line cites its values. Every document must be used or carry a reason. Not an engine input, but it is the evidence for F-015, F-021.",
+   "nodes": [
+    "doc:D15"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-097",
+   "check": "P6-document-completeness",
+   "title": "D47 not reflected in v3: Invoice - Delta Breeze Heating & Air (1450 Fremont Way)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Received 2026-02-12; v3 computed 2026-06-23. Engine lists it as used but no line cites its values. Every document must be used or carry a reason. Not an engine input, but it is the evidence for F-017.",
+   "nodes": [
+    "doc:D47"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-098",
+   "check": "P6-document-completeness",
+   "title": "D54 not reflected in v3: Buyer closing statement - 7709 Barton Ridge Dr (purchase 07/08/2025)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Received 2026-02-12; v3 computed 2026-06-23. Engine lists it as used but no line cites its values. Every document must be used or carry a reason. Not an engine input, but it is the evidence for F-019.",
+   "nodes": [
+    "doc:D54"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-099",
+   "check": "P6-document-completeness",
+   "title": "D69 not extracted: IRS account transcript, tax period Dec 2025 (pulled by firm)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Agency transcript; reproduced as structured data in tax_agency_records.irs_account_transcript_2025.",
+   "nodes": [
+    "doc:D69"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-100",
+   "check": "P6-document-completeness",
+   "title": "D70 not extracted: IRS CP2000 for tax year 2023 and resolution letter",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Resolved prior-year notice; summarized in tax_agency_records.notices.",
+   "nodes": [
+    "doc:D70"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-101",
+   "check": "P6-document-completeness",
+   "title": "D71 not reflected in v3: Social Security card - Theo Lindqvist-Okafor (photo) (received after the last computation)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Received 2026-07-13; v3 computed 2026-06-23. No line in this version cites this document. Every document must be used or carry a reason. Not an engine input, but it is the evidence for F-034.",
+   "nodes": [
+    "doc:D71"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-102",
+   "check": "P6-document-completeness",
+   "title": "D72 not extracted: IRS Letter 566 - examination of 2025 return",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Examination letter received after filing; summarized in tax_agency_records.notices.",
+   "nodes": [
+    "doc:D72"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-103",
+   "check": "P6-document-completeness",
+   "title": "D73 not reflected in v3: Halvorsen Data paystub - pay date 07/18/2025 (Ngozi Okafor)",
+   "severity": "info",
+   "origin": "process",
+   "detail": "Received 2026-03-27; v3 computed 2026-06-23. Engine lists it as used but no line cites its values. Every document must be used or carry a reason. Not an engine input, but it is the evidence for F-022.",
+   "nodes": [
+    "doc:D73"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-104",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: DIGITAL_ASSET_BASIS_MISSING",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Coinhaven lot C6 has no cost basis (transfer in from external wallet). Engine used zero basis and the transfer-in date.",
+   "nodes": [
+    "diag:v3:DIGITAL_ASSET_BASIS_MISSING",
+    "ev:ev-0879",
+    "ev:ev-0881",
+    "ev:ev-0882",
+    "ev:ev-0918",
+    "ev:ev-0919"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-006",
+    "F-023"
+   ]
+  },
+  {
+   "id": "F-105",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: AMT_CREDIT_CARRYFORWARD",
+   "severity": "info",
+   "origin": "engine",
+   "detail": "AMT arises from the incentive stock option exercise (a deferral item); a minimum tax credit carryforward to 2026 is expected (Form 8801 next year).",
+   "nodes": [
+    "diag:v3:AMT_CREDIT_CARRYFORWARD",
+    "line:v3:F6251.11"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-106",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: AOTC_PHASED_OUT",
+   "severity": "info",
+   "origin": "engine",
+   "detail": "American opportunity credit fully phased out by modified AGI.",
+   "nodes": [
+    "diag:v3:AOTC_PHASED_OUT",
+    "line:v3:F8863.7"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-107",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: FBAR_OUTSIDE_RETURN",
+   "severity": "info",
+   "origin": "engine",
+   "detail": "Foreign account maximum exceeds 10,000 USD: FinCEN Form 114 (FBAR) is due separately (not part of this return; not in engagement scope).",
+   "nodes": [
+    "diag:v3:FBAR_OUTSIDE_RETURN",
+    "line:v3:F8938.1.max"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-108",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: FORM_1099_FILING",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Schedule C: client paid two contractors 600 or more and has not filed Forms 1099-NEC.",
+   "nodes": [
+    "diag:v3:FORM_1099_FILING",
+    "line:v3:SchC.I",
+    "line:v3:SchC.J"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-109",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: DUE_DILIGENCE_REQUIRED",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Form 8867 must be completed by the preparer for the child tax credit and credit for other dependents.",
+   "nodes": [
+    "diag:v3:DUE_DILIGENCE_REQUIRED",
+    "line:v3:F8867.status"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-110",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: CA_AMT_NOT_COMPUTED",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "California AMT (Schedule P 540NR) not computed: review incentive stock option exercise for California-source allocation.",
+   "nodes": [
+    "diag:v3:CA_AMT_NOT_COMPUTED",
+    "line:v3:F6251.2i"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-111",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: HOME_OFFICE_AREA_CHANGE",
+   "severity": "info",
+   "origin": "engine",
+   "detail": "Home office area (average 240 sq ft) differs from 2024 (300 sq ft).",
+   "nodes": [
+    "diag:v3:HOME_OFFICE_AREA_CHANGE",
+    "line:v3:SchC.30"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-112",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: QUESTIONNAIRE_SALES_CONFLICT",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Questionnaire answer: no investments sold. Documents show 282 brokerage sales and 12 digital asset dispositions.",
+   "nodes": [
+    "diag:v3:QUESTIONNAIRE_SALES_CONFLICT",
+    "qa:qa-14"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  },
+  {
+   "id": "F-113",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: LOW_CONFIDENCE_READ",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Handwritten receipt amount read with low confidence (0.41).",
+   "nodes": [
+    "diag:v3:LOW_CONFIDENCE_READ",
+    "ev:ev-1049"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": [
+    "F-002",
+    "F-007"
+   ]
+  },
+  {
+   "id": "F-114",
+   "check": "P7-engine-diagnostics",
+   "title": "Engine: BROKER_SUMMARY_DETAIL_MISMATCH",
+   "severity": "warning",
+   "origin": "engine",
+   "detail": "Meridian 1099-B summary proceeds 71,965.00 differ from the sum of extracted lots 71,715.00.",
+   "nodes": [
+    "diag:v3:BROKER_SUMMARY_DETAIL_MISMATCH",
+    "ev:ev-0703"
+   ],
+   "evidence": [],
+   "corrections": [],
+   "federal_effect": null,
+   "california_effect": null,
+   "effect_note": null,
+   "generic": true,
+   "related": []
+  }
+ ],
+ "verified": [
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 st proceeds: summary = sum of 260 lots",
+   "engine": 139615.96,
+   "independent": 139615.96,
+   "nodes": [
+    "ev:ev-1083"
+   ]
+  },
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 st basis: summary = sum of 260 lots",
+   "engine": 140228.56,
+   "independent": 140228.56,
+   "nodes": [
+    "ev:ev-1084"
+   ]
+  },
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 st wash: summary = sum of 260 lots",
+   "engine": 1326.05,
+   "independent": 1326.05,
+   "nodes": [
+    "ev:ev-1085"
+   ]
+  },
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 lt proceeds: summary = sum of 260 lots",
+   "engine": 195112.56,
+   "independent": 195112.56,
+   "nodes": [
+    "ev:ev-1086"
+   ]
+  },
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 lt basis: summary = sum of 260 lots",
+   "engine": 198071.7,
+   "independent": 198071.7,
+   "nodes": [
+    "ev:ev-1087"
+   ]
+  },
+  {
+   "check": "X7-summary-vs-detail",
+   "what": "D74 lt wash: summary = sum of 260 lots",
+   "engine": 1580.24,
+   "independent": 1580.24,
+   "nodes": [
+    "ev:ev-1088"
+   ]
+  },
+  {
+   "check": "R1-line-arithmetic",
+   "what": "All R-SUM / R-CARRY lines equal their inputs",
+   "engine": 0,
+   "independent": 0,
+   "nodes": []
+  },
+  {
+   "check": "R2-federal-tax",
+   "what": "Schedule D tax worksheet on taxable income 346,913 (qualified dividends 5,970, net capital gain 146,881, unrecaptured 1250 50,340)",
+   "engine": 59727,
+   "independent": 59727.13,
+   "nodes": [
+    "line:v3:F1040.16"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "Net SE earnings = Schedule C x 92.35%",
+   "engine": 75592,
+   "independent": 75592,
+   "nodes": [
+    "line:v3:SchSE.4a"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "SE social security portion (spouse with no wages)",
+   "engine": 9373,
+   "independent": 9373.41,
+   "nodes": [
+    "line:v3:SchSE.10"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "SE Medicare portion",
+   "engine": 2192,
+   "independent": 2192.17,
+   "nodes": [
+    "line:v3:SchSE.11"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "Net investment income tax 3.8% x lesser of NII or MAGI over threshold",
+   "engine": 7095,
+   "independent": 7094.87,
+   "nodes": [
+    "line:v3:F8960.17"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "Additional Medicare tax on wages and SE income",
+   "engine": 500,
+   "independent": 500.33,
+   "nodes": [
+    "line:v3:F8959.18"
+   ]
+  },
+  {
+   "check": "R3-self-employment-and-surtaxes",
+   "what": "Excess social security withheld by two employers",
+   "engine": 3342,
+   "independent": 3341.8,
+   "nodes": [
+    "line:v3:Sch3.11"
+   ]
+  },
+  {
+   "check": "R4-limits-and-phaseouts",
+   "what": "SALT cap 40,000 at AGI 445,590",
+   "engine": 40000,
+   "independent": 40000,
+   "nodes": [
+    "line:v3:SchA.5e"
+   ]
+  },
+  {
+   "check": "R4-limits-and-phaseouts",
+   "what": "Child tax credit phase-out $50 per $1,000",
+   "engine": 2300,
+   "independent": 2300,
+   "nodes": [
+    "line:v3:F8812.11"
+   ]
+  },
+  {
+   "check": "R4-limits-and-phaseouts",
+   "what": "SEP limit 20% of (net profit - half SE tax)",
+   "engine": 15214,
+   "independent": 15214.2,
+   "nodes": [
+    "line:v3:Sch1.16"
+   ]
+  },
+  {
+   "check": "R4-limits-and-phaseouts",
+   "what": "Larger of itemized or standard deduction",
+   "engine": 85706,
+   "independent": 85706.0,
+   "nodes": [
+    "line:v3:F1040.12"
+   ]
+  },
+  {
+   "check": "R5-california-tax",
+   "what": "California rate schedule on total taxable income 421,970",
+   "engine": 32328,
+   "independent": 32327.93,
+   "nodes": [
+    "line:v3:F540NR.31"
+   ]
+  },
+  {
+   "check": "R5-california-tax",
+   "what": "540NR line 34 = CA AGI / total AGI",
+   "engine": 0.6347,
+   "independent": 0.6347,
+   "nodes": [
+    "line:v3:F540NR.34"
+   ]
+  },
+  {
+   "check": "P1-federal-payments-vs-transcript",
+   "what": "Extension payment agrees to IRS transcript",
+   "engine": 36000,
+   "independent": 36000,
+   "nodes": [
+    "line:v3:Sch3.10"
+   ]
+  },
+  {
+   "check": "P3-identity-vs-documents",
+   "what": "Ngozi Okafor SSN agrees to 3 document(s)",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "person:ngozi"
+   ]
+  },
+  {
+   "check": "P4-carryovers-agree-to-prior-year",
+   "what": "capital_loss_short carryover agrees to 2024 return",
+   "engine": 3200,
+   "independent": 3200,
+   "nodes": [
+    "py:/carryovers_into_2025/capital_loss_short"
+   ]
+  },
+  {
+   "check": "P4-carryovers-agree-to-prior-year",
+   "what": "capital_loss_long carryover agrees to 2024 return",
+   "engine": 11000,
+   "independent": 11000,
+   "nodes": [
+    "py:/carryovers_into_2025/capital_loss_long"
+   ]
+  },
+  {
+   "check": "P4-carryovers-agree-to-prior-year",
+   "what": "passive_1450_fremont carryover agrees to 2024 return",
+   "engine": 6300,
+   "independent": 6300,
+   "nodes": [
+    "py:/carryovers_into_2025/passive_1450_fremont"
+   ]
+  },
+  {
+   "check": "P4-carryovers-agree-to-prior-year",
+   "what": "passive_1200_barton_hills carryover agrees to 2024 return",
+   "engine": 9850,
+   "independent": 9850,
+   "nodes": [
+    "py:/carryovers_into_2025/passive_1200_barton_hills"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D01 supports required step: Engagement letter and consents signed",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D01"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D02 supports required step: Engagement letter and consents signed",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D02"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D03 supports required step: Identity verified",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D03"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D04 supports required step: Identity verified",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D04"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D05 supports required step: Identity verified",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D05"
+   ]
+  },
+  {
+   "check": "P6-document-completeness",
+   "what": "D06 supports required step: Prior-year return reviewed",
+   "engine": 0,
+   "independent": 0,
+   "nodes": [
+    "doc:D06"
+   ]
+  }
+ ],
+ "index_stats": {
+  "nodes": 5383,
+  "edges": 14757,
+  "by_kind": {
+   "document": 74,
+   "page": 199,
+   "extracted_value": 3012,
+   "client_answer": 45,
+   "client_message": 10,
+   "call_note": 1,
+   "person": 4,
+   "parameter": 40,
+   "fx_rate": 3,
+   "asset": 33,
+   "timeline": 29,
+   "version": 3,
+   "line": 1877,
+   "diagnostic": 37,
+   "prior": 12,
+   "agency": 4
+  },
+  "unresolved_refs": 0
+ }
+}

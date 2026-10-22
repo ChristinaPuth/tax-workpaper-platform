@@ -1,0 +1,9 @@
+__pycache__/
+.pytest_cache/
+out/index.json
+.DS_Store
+.venv/
+var/
+frontend/node_modules/
+frontend/dist/
+.claude/
