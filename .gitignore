@@ -7,3 +7,4 @@ var/
 frontend/node_modules/
 frontend/dist/
 .claude/
+docs/internal/
