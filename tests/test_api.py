@@ -129,3 +129,26 @@ def test_search(client):
     r = client.get("/api/search", params={"q": "1,840"})
     body = r.json()
     assert body["extracted_values"]
+
+
+def test_lines_carry_finding_flags(client):
+    rows = {r["key"]: r for r in client.get("/api/versions/v3/lines").json()}
+    assert rows["SchC.1"]["findings"].get("error") == 1          # 1099-K counted twice
+    assert rows["SchC.1"]["rule"] == "R-SCHC-GROSS"
+    assert rows["F1040.1z"]["findings"] == {}
+
+
+def test_value_layers_expose_a_misread(client):
+    v = client.get("/api/values/ev-1045").json()                # Little Sprouts EIN
+    assert v["extracted"]["text_as_read"] == "74-3829516"
+    assert v["printed"]["found"] is False                        # the transposed digits are not on the page
+    assert [u["key"] for u in v["used"]] == ["F2441.1b"]
+    assert any(f["id"] == "F-001" for f in v["findings"])
+    ok = client.get("/api/values/ev-0103").json()                # books revenue 151,300
+    assert ok["printed"]["text"] == "151,300.00" and ok["used"][0]["key"] == "SchC.1"
+
+
+def test_node_preview(client):
+    n = client.get("/api/nodes/ev:ev-0127").json()
+    assert n["kind"] == "extracted_value" and n["document"] == "D21"
+    assert client.get("/api/nodes/line:v3:NOPE").status_code == 404

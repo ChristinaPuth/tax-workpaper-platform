@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from .documents import render_page
+from .documents import locate_value, render_page
 
 router = APIRouter(prefix="/api")
 
@@ -16,6 +16,16 @@ def _store(request: Request):
 
 def _finding_dict(f) -> dict:
     return dict(f.to_dict(), related=getattr(f, "related", []))
+
+
+def _findings_by_node(findings) -> dict[str, dict[str, int]]:
+    """node id -> {severity: count}, for flagging rows without fetching every finding."""
+    out: dict[str, dict[str, int]] = {}
+    for f in findings:
+        for n in f.nodes:
+            c = out.setdefault(n, {})
+            c[f.severity] = c.get(f.severity, 0) + 1
+    return out
 
 
 def _line_not_found(version: str, key: str) -> HTTPException:
@@ -61,8 +71,10 @@ def version_lines(version: str, request: Request, area: str | None = None) -> li
     out = lines.values()
     if area:
         out = [l for l in out if l["form"] == area]
+    flags = _findings_by_node(_store(request).findings)
     return [{"key": l["key"], "form": l["form"], "line": l["line"], "label": l["label"], "value": l["value"],
-             "jurisdiction": l["jurisdiction"]} for l in out]
+             "jurisdiction": l["jurisdiction"], "rule": l["rule"],
+             "findings": flags.get(f"line:{version}:{l['key']}", {})} for l in out]
 
 
 @router.get("/lines/{key}")
@@ -146,6 +158,48 @@ def document_page(doc_id: str, page: int, request: Request) -> dict:
         return render_page(s.packet, s.index, doc_id, page)
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
+
+
+@router.get("/values/{ev_id}")
+def value_layers(ev_id: str, request: Request, version: str | None = None) -> dict:
+    """The three layers of one extracted value: what is printed on the page, what the pipeline
+    read, and what the return uses. Disagreement between layers is where confident mistakes hide."""
+    s = _store(request)
+    p, ix = s.packet, s.index
+    e = p.ev.get(ev_id)
+    if e is None:
+        raise HTTPException(404, f"no extracted value {ev_id!r}")
+    version = version or p.latest["version"]
+    text = p.page_text.get((e["document_id"], e["page"]), "")
+    span = locate_value(text, e)
+    used = []
+    for lid in ix.sources(f"ev:{ev_id}", "sourced_from"):
+        if lid.startswith(f"line:{version}:"):
+            line = p.line(lid.split(":", 2)[2], version)
+            used.append({"key": line["key"], "label": line["label"], "value": line["value"], "rule": line["rule"],
+                         "sources": len(line["sources"])})
+    nid = f"ev:{ev_id}"
+    return {
+        "id": ev_id, "document": e["document_id"], "page": e["page"], "field": e["field"], "label": e["label"],
+        "printed": {"found": span is not None, "text": text[span["start"]:span["end"]] if span else None,
+                    "span": span, "context": text[max(0, span["start"] - 80):span["end"] + 80] if span else None},
+        "extracted": {"value": e["value"], "value_type": e["value_type"], "text_as_read": e["text_as_read"],
+                      "confidence": e["confidence"]},
+        "used": used, "version": version,
+        "findings": [_finding_dict(f) for f in s.findings if nid in f.nodes],
+    }
+
+
+@router.get("/nodes/{node_id:path}")
+def node_preview(node_id: str, request: Request) -> dict:
+    """A one-line preview of any node id, for hover cards on references."""
+    ix = _store(request).index
+    n = ix.nodes.get(node_id)
+    if n is None:
+        raise HTTPException(404, f"no node {node_id!r}")
+    doc = ix.doc_of(node_id)
+    return {"id": n.id, "kind": n.kind, "label": n.label, "document": doc.split(":", 1)[1] if doc else None,
+            "data": {k: v for k, v in n.data.items() if isinstance(v, (str, int, float, bool)) or v is None}}
 
 
 # -------------------------------------------------------------------------- findings
