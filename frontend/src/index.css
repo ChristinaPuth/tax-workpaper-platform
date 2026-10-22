@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body { @apply bg-slate-50 text-slate-800 antialiased text-[13px]; }
+}
+
+@layer components {
+  .num { font-variant-numeric: tabular-nums; }
+  .chip { @apply inline-flex items-center gap-1 rounded border px-1.5 py-px text-[11px] leading-4 whitespace-nowrap; }
+  .panel { @apply rounded-lg border border-slate-200 bg-white; }
+  .section-title { @apply text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+  .btn { @apply inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40; }
+}
