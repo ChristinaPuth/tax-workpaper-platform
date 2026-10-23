@@ -55,6 +55,7 @@ export interface LineRow {
   jurisdiction: string
   rule: string
   findings: Partial<Record<Severity, number>>
+  finding_refs: { id: string; severity: Severity }[]
 }
 
 export interface Source {
@@ -193,4 +194,101 @@ export interface WorkEvent {
   payload: Record<string, unknown>
   batch_id: string | null
   undone?: boolean
+}
+
+// ------------------------------------------------------------------ working return (Plan C)
+export type LineKind = 'engine' | 'adjusted' | 'propagated' | 'stale'
+
+export interface WorkingLine {
+  engine: number | string | null
+  value: number | string | null
+  kind: LineKind
+  partial: boolean
+}
+
+export interface Adjustment {
+  event_id: number
+  key: string
+  engine: number | string | null
+  new: number | string
+  actor: string
+  reason: string
+  at: string
+  category: string | null
+  effect: { category: string | null; federal: number | null; california: number | null; estimated: boolean }
+}
+
+export interface WorkingReturn {
+  version: string
+  lines: Record<string, WorkingLine>
+  adjustments: Adjustment[]
+  estimate: { federal: number; california: number; method: string }
+  summary: Record<string, { engine: number | null; value: number | null; kind?: LineKind }>
+  warnings: string[]
+}
+
+// ------------------------------------------------------------------ inbox
+export interface InboxItem {
+  id: string
+  kind: 'finding' | 'group' | 'adjustment' | 'review_note' | 'question' | 'answer'
+  severity: Severity
+  title: string
+  what: string | null
+  why: string
+  todo: string
+  proposal: string | null
+  effect: { federal: number | null; california: number | null }
+  area: string | null
+  area_label: string | null
+  target: string | null
+  state: string
+  check?: string
+  count?: number
+  event_id?: number
+  actor?: string
+  finding_id?: string
+  handled_by?: string | null
+  handled_at?: string | null
+}
+
+export interface InboxSection {
+  key: string
+  title: string
+  hint: string | null
+  items: InboxItem[]
+  needs_you: boolean // false: shown for context (waiting on someone else), not counted
+}
+
+export interface Inbox {
+  person: string
+  role: string
+  total: number
+  sections: InboxSection[]
+  empty_message: string | null
+  areas: Record<string, string>
+}
+
+// ------------------------------------------------------------------ search
+export interface SearchResult {
+  query: string
+  amount: number | null
+  lines: { version: string; key: string; label: string; value: number | string | null; form: string }[]
+  documents: { id: string; title: string; document_type: string }[]
+  people: { id: string; name: string; role: string }[]
+  extracted_values: { id: string; document_id: string; page: number; label: string; text_as_read: string }[]
+  findings: Finding[]
+}
+
+export interface Overview {
+  versions: { version: string; computed_at: string; trigger: string; summary: Record<string, Record<string, number>> }[]
+  latest_version: string
+}
+
+// open | adjusted (changed, waiting for review) | reviewed - one rule shared with the Inbox
+export interface FindingState {
+  state: 'open' | 'adjusted' | 'reviewed'
+  by?: string
+  at?: string
+  event_id?: number
+  line?: string
 }

@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { api, type WorkEvent } from '../api'
 import { useSession } from '../session-context'
 import { shortLabel } from '../refs'
+import { useInbox } from '../queries'
+import { SearchBar } from './SearchBar'
+import { NavTrail } from './NavTrail'
 
 const ROLE_LABEL: Record<string, string> = {
   preparer: 'Preparer',
@@ -20,6 +23,7 @@ export function Layout() {
     queryKey: ['changes', actor],
     queryFn: () => api<{ count: number }>('/me/changes'),
   })
+  const { data: inbox } = useInbox()
   const nav = ({ isActive }: { isActive: boolean }) =>
     `rounded-md px-2.5 py-1 text-[13px] font-medium ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`
 
@@ -31,6 +35,10 @@ export function Layout() {
           <span className="text-[12px] text-slate-400">Okafor-Lindqvist · 2025 · Married filing jointly</span>
         </div>
         <nav className="flex gap-1">
+          <NavLink to="/inbox" className={nav}>
+            Inbox
+            {inbox && inbox.total > 0 && <span className="num ml-1.5 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{inbox.total}</span>}
+          </NavLink>
           <NavLink to="/return" className={nav}>
             Return
           </NavLink>
@@ -41,6 +49,7 @@ export function Layout() {
             Findings
           </NavLink>
         </nav>
+        <SearchBar />
         <div className="ml-auto flex items-center gap-3">
           <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title={`Live updates: ${live}`}>
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
@@ -73,6 +82,7 @@ export function Layout() {
           )}
         </div>
       </header>
+      <NavTrail />
       <main className="min-h-0 flex-1">
         <Outlet />
       </main>

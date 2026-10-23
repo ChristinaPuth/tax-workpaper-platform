@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api, type LineDetail, type LineRow, type Source, type TraceNode } from '../api'
-import { useLines } from '../queries'
+import { openFindings, useFindingStates, useLines, useWorking } from '../queries'
+import { AdjustPanel } from './AdjustPanel'
 import { fmtValue, formOf } from '../format'
 import { Ref } from './Ref'
 import { SourcePreview } from './SourcePreview'
-import { FindingCard, FlagDots } from './ui'
+import { FindingCard, FlagDots, KindBadge } from './ui'
 
 export function TracePanel({ version, lineKey }: { version: string; lineKey: string }) {
   const { data: detail } = useQuery({ queryKey: ['line', lineKey], queryFn: () => api<LineDetail>(`/lines/${lineKey}`) })
@@ -22,11 +23,19 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
       `/impact/${encodeURIComponent(`line:${version}:${lineKey}`)}?version=${version}`),
   })
   const { data: lines = [] } = useLines(version)
+  const { data: working } = useWorking(version)
   const byKey = Object.fromEntries(lines.map((l) => [l.key, l]))
 
   if (!detail || !trace) return <div className="p-4 text-slate-400">Loading {lineKey}…</div>
   const versions = Object.keys(detail.by_version)
   const downstream = (impact?.lines_fed ?? []).filter((l) => l.key !== lineKey)
+  const w = working?.lines[lineKey]
+  const moved = !!w && w.value !== w.engine
+  const proposals = detail.findings.flatMap((f) =>
+    f.corrections
+      .filter((c) => c.line === lineKey && typeof c.proposed === 'number')
+      .map((c) => ({ value: c.proposed as number, label: `${f.id}: ${f.title}` })),
+  )
 
   return (
     <div className="space-y-4 p-4">
@@ -36,8 +45,12 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
         </div>
         <h2 className="text-base font-semibold text-slate-900">{detail.label}</h2>
         <div className="mt-1 flex items-baseline gap-3">
-          <span className="num text-2xl font-semibold text-slate-900">{fmtValue(trace.value)}</span>
-          <span className="chip border-slate-200 bg-slate-50 text-slate-500">engine {version}</span>
+          <span className={`num text-2xl font-semibold ${moved ? 'text-indigo-800' : 'text-slate-900'}`}>
+            {w?.partial ? '≈ ' : ''}
+            {fmtValue(w ? w.value : trace.value)}
+          </span>
+          {w ? <KindBadge kind={w.kind} partial={w.partial} /> : <span className="chip border-slate-200 bg-slate-50 text-slate-500">engine {version}</span>}
+          {moved && <span className="num text-[12px] text-slate-400">engine {version}: <span className="line-through">{fmtValue(trace.value)}</span></span>}
         </div>
         {versions.length > 1 && (
           <div className="mt-2 flex gap-3 text-[12px] text-slate-500">
@@ -50,9 +63,19 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
         )}
       </header>
 
+      <AdjustPanel
+        version={version}
+        editable={!!working}
+        lineKey={lineKey}
+        engineValue={trace.value}
+        working={w}
+        adjustment={working?.adjustments.find((a) => a.key === lineKey)}
+        proposals={proposals}
+      />
+
       {detail.findings.length > 0 && (
         <section className="space-y-1.5">
-          <div className="section-title">Open issues</div>
+          <div className="section-title">Issues on this line</div>
           {detail.findings.map((f) => (
             <FindingCard key={f.id} f={f} />
           ))}
@@ -147,6 +170,7 @@ function TraceBody({ node, byKey, depth }: { node: TraceNode; byKey: Record<stri
 
 function InputRow({ node, byKey, depth }: { node: TraceNode; byKey: Record<string, LineRow>; depth: number }) {
   const [open, setOpen] = useState(depth < 2)
+  const { data: states } = useFindingStates()
   const key = node.id.split(':').slice(2).join(':')
   const row = byKey[key]
   const version = node.id.split(':')[1]
@@ -169,7 +193,7 @@ function InputRow({ node, byKey, depth }: { node: TraceNode; byKey: Record<strin
         >
           <span className="font-mono text-[11px] text-slate-400">{key}</span> {row?.label}
         </Link>
-        {row && <FlagDots findings={row.findings} />}
+        {row && <FlagDots findings={openFindings(row, states).open} />}
         <span className="num w-24 text-right font-medium">{fmtValue(node.value)}</span>
       </div>
       {open && !leaf && (

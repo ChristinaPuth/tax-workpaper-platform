@@ -6,6 +6,8 @@ import { fmtDate, fmtValue, formOf } from '../format'
 import { PageText } from '../components/PageText'
 import { ValueLayers } from '../components/ValueLayers'
 import { FindingCard, StatusChip } from '../components/ui'
+import { Splitter } from '../components/Splitter'
+import { useColumnWidth } from '../useColumnWidth'
 
 export function DocumentPage() {
   const { id = '' } = useParams()
@@ -19,6 +21,7 @@ export function DocumentPage() {
     enabled: !!doc,
   })
   const textBox = useRef<HTMLDivElement>(null)
+  const sideCol = useColumnWidth('document.side', 460, 320, 900)
   useEffect(() => {
     if (activeEv) textBox.current?.querySelector(`#ev-${CSS.escape(activeEv)}`)?.scrollIntoView({ block: 'center' })
   }, [view, activeEv])
@@ -77,7 +80,8 @@ export function DocumentPage() {
         </div>
       </section>
 
-      <aside className="w-[460px] shrink-0 space-y-4 overflow-y-auto border-l border-slate-200 bg-slate-50 p-4">
+      <Splitter side="right" width={sideCol.width} onChange={sideCol.setWidth} onReset={sideCol.reset} />
+      <aside style={{ width: sideCol.width }} className="shrink-0 space-y-4 overflow-y-auto bg-slate-50 p-4">
         <section>
           <div className="section-title mb-1">Where this document went</div>
           <div className="rounded-md border border-slate-200 bg-white p-2.5">

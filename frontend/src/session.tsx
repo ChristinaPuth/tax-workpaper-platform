@@ -33,8 +33,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const ev: WorkEvent = JSON.parse(e.data)
       lastId.current = Math.max(lastId.current, ev.id)
       setRecent((r) => [ev, ...r].slice(0, 20))
-      qc.invalidateQueries({ queryKey: ['events'] })
-      qc.invalidateQueries({ queryKey: ['changes'] })
+      for (const key of ['events', 'changes', 'working', 'inbox', 'finding-states']) qc.invalidateQueries({ queryKey: [key] })
     }
     // the server names each SSE message after the event type
     const types = ['note', 'review_note', 'resolve_note', 'question', 'answer', 'verify', 'adjust', 'judgment',
