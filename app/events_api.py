@@ -70,6 +70,10 @@ def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
             raise HTTPException(422, f"{ne.type} needs a target node id")
     if target and target not in s.store.index.nodes:
         raise HTTPException(422, f"unknown node {target!r}")
+    if ne.type == "adjust":
+        latest = s.store.packet.latest["version"]
+        if not (target.startswith(f"line:{latest}:") or target.startswith("ev:")):
+            raise HTTPException(422, f"adjust a line of the current version ({latest}) or an extracted value")
     prior = _flag(db.read_events(eng, target=target), _undone_ids(eng)) if target else []
     try:
         check(person, ne.type, ne.payload,

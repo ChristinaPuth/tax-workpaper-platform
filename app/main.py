@@ -29,6 +29,7 @@ from workpaper.packet import packet_path as default_packet_path
 from .api import router
 from .db import make_engine
 from .events_api import router as events_router
+from .work_api import router as work_router
 from .live import Broker, install_exit_signal_hook
 from .documents import page_coverage
 from .people import directory
@@ -73,6 +74,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     app.include_router(router)
     app.include_router(events_router)
+    app.include_router(work_router)
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
         app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
