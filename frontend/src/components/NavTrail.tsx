@@ -21,6 +21,7 @@ function labelFor(pathname: string, search: string): string | null {
     return form ? FORM_NAME[form] ?? form : 'Return'
   }
   if (pathname === '/documents') return 'Documents'
+  if (pathname === '/filing') return 'Filing'
   const doc = pathname.match(/^\/documents\/([^/]+)$/)
   if (doc) return `${doc[1]}${q.get('page') ? ` p${q.get('page')}` : ''}`
   if (pathname === '/findings') {

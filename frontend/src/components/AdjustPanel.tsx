@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type Adjustment, type WorkEvent, type WorkingLine } from '../api'
 import { fmtEffect, fmtTime, fmtValue } from '../format'
 import { useSession } from '../session-context'
+import { LOG_DERIVED } from '../queries'
 import { KindBadge } from './ui'
 
 const STALE_NOTE =
@@ -32,7 +33,7 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
   const [open, setOpen] = useState(false)
 
   const refresh = () => {
-    for (const key of ['working', 'inbox', 'events', 'changes', 'finding-states']) qc.invalidateQueries({ queryKey: [key] })
+    LOG_DERIVED.forEach((key) => qc.invalidateQueries({ queryKey: [key] }))
   }
   const post = useMutation({
     mutationFn: (body: object) => api<WorkEvent>('/events', { method: 'POST', body: JSON.stringify(body) }),

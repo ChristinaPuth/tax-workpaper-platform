@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api, type WorkEvent } from '../api'
 import { useSession } from '../session-context'
 import { shortLabel } from '../refs'
-import { useInbox } from '../queries'
+import { useGate, useInbox } from '../queries'
 import { SearchBar } from './SearchBar'
 import { NavTrail } from './NavTrail'
 
@@ -24,6 +24,7 @@ export function Layout() {
     queryFn: () => api<{ count: number }>('/me/changes'),
   })
   const { data: inbox } = useInbox()
+  const { data: gate } = useGate()
   const nav = ({ isActive }: { isActive: boolean }) =>
     `rounded-md px-2.5 py-1 text-[13px] font-medium ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`
 
@@ -47,6 +48,14 @@ export function Layout() {
           </NavLink>
           <NavLink to="/findings" className={nav}>
             Findings
+          </NavLink>
+          <NavLink to="/filing" className={nav}>
+            Filing
+            {gate && (
+              <span className={`num ml-1.5 rounded-full px-1.5 text-[10px] ${gate.ready ? 'bg-emerald-500 text-white' : 'bg-slate-600 text-slate-200'}`}>
+                {gate.ready ? 'ready' : `${gate.summary.steps_done}/${gate.summary.steps_total}`}
+              </span>
+            )}
           </NavLink>
         </nav>
         <SearchBar />

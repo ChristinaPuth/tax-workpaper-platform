@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
-import type { Finding, FindingState, Severity } from '../api'
+import { useState, type ReactNode } from 'react'
+import { JUDGMENT_KINDS, type Finding, type FindingState, type Severity } from '../api'
 import { fmtEffect, fmtTime } from '../format'
-import { useFindingStates } from '../queries'
+import { useFindingStates, usePostBatch } from '../queries'
 import { useSession } from '../session-context'
 import { Ref } from './Ref'
 
@@ -58,23 +58,33 @@ export function StateChip({ state }: { state: FindingState | undefined }) {
   )
 }
 
-export function FindingCard({ f, compact = false }: { f: Finding; compact?: boolean }) {
+export function FindingCard({ f, compact = false, selected, onSelect }: {
+  f: Finding
+  compact?: boolean
+  selected?: boolean // shown with a checkbox when the list supports one decision for many
+  onSelect?: (checked: boolean) => void
+}) {
   const { data: states } = useFindingStates()
-  const { people } = useSession()
+  const { people, person } = useSession()
+  const [deciding, setDeciding] = useState(false)
   const st = states?.[f.id]
   const handled = !!st && st.state !== 'open'
   const tone = handled ? 'border-slate-200 bg-slate-50' : f.severity === 'error' ? 'border-red-200 bg-red-50/40' : 'border-slate-200 bg-white'
   return (
     <div className={`rounded-md border p-2.5 ${tone}`}>
       <div className="flex items-start gap-2">
+        {onSelect && !handled && (
+          <input type="checkbox" className="mt-1" checked={!!selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${f.id}`} />
+        )}
         {handled ? <StateChip state={st} /> : <SeverityChip severity={f.severity} />}
         <div className="min-w-0 flex-1">
           <div className={`font-medium ${handled ? 'text-slate-500' : 'text-slate-800'}`}>{f.title}</div>
           {handled && (
             <p className="mt-0.5 text-[12px] text-slate-500">
-              {people.find((p) => p.id === st!.by)?.name ?? st!.by} changed {st!.line}
+              {people.find((p) => p.id === st!.by)?.name ?? st!.by}{' '}
+              {st!.decision ? `decided: ${st!.decision} (authority: ${st!.authority})` : `changed ${st!.line}`}
               {st!.at ? ` on ${fmtTime(st!.at)}` : ''}.{' '}
-              {st!.state === 'adjusted' ? 'Waiting for a reviewer to sign off.' : 'Signed off.'}
+              {st!.state === 'reviewed' ? 'Signed off.' : 'Waiting for a reviewer to sign off.'}
             </p>
           )}
           {!compact && <p className="mt-1 text-slate-600">{f.detail}</p>}
@@ -99,6 +109,15 @@ export function FindingCard({ f, compact = false }: { f: Finding; compact?: bool
                 <Ref key={n} id={n} />
               ))}
             </div>
+          )}
+          {!handled && person?.can.includes('judgment') && !compact && (
+            deciding ? (
+              <DecisionForm findings={[f]} onDone={() => setDeciding(false)} />
+            ) : (
+              <button className="btn mt-1.5" onClick={() => setDeciding(true)}>
+                Record decision
+              </button>
+            )
           )}
         </div>
         <span className="font-mono text-[11px] text-slate-400">{f.id}</span>
@@ -126,5 +145,49 @@ export function KindBadge({ kind, partial = false }: { kind: string; partial?: b
       {partial ? '≈ ' : ''}
       {k.label}
     </span>
+  )
+}
+
+// Settle one or many findings with a decision. The firm rule: every judgment records its authority.
+export function DecisionForm({ findings, onDone }: { findings: Finding[]; onDone: () => void }) {
+  const post = usePostBatch()
+  const [kind, setKind] = useState<string>(findings.every((f) => f.check.startsWith('P5')) ? 'explanation' : 'judgment')
+  const [decision, setDecision] = useState('')
+  const [authority, setAuthority] = useState('')
+  const valid = decision.trim() && authority.trim() && findings.length > 0
+  return (
+    <form
+      className="mt-1.5 space-y-1.5 rounded-md border border-indigo-200 bg-white p-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!valid) return
+        post.mutate(
+          findings.map((f) => ({
+            type: 'judgment',
+            target: f.nodes[0],
+            payload: { kind, decision: decision.trim(), authority: authority.trim(), finding_id: f.id },
+          })),
+          { onSuccess: onDone },
+        )
+      }}
+    >
+      <div className="section-title">
+        Decision{findings.length > 1 ? ` for ${findings.length} issues` : ''}
+      </div>
+      <select value={kind} onChange={(e) => setKind(e.target.value)} className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]">
+        {JUDGMENT_KINDS.map((k) => <option key={k} value={k}>{k.replace('_', ' ')}</option>)}
+      </select>
+      <textarea value={decision} onChange={(e) => setDecision(e.target.value)} rows={2} placeholder="What you decided and why"
+        className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]" />
+      <input value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder="Authority relied on (required): rule, document, client confirmation…"
+        className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]" />
+      {post.error && <p className="text-[12px] text-red-700">{(post.error as Error).message}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={!valid || post.isPending} className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700">
+          Record decision
+        </button>
+        <button type="button" className="btn" onClick={onDone}>Cancel</button>
+      </div>
+    </form>
   )
 }

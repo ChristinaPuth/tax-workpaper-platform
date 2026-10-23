@@ -5,6 +5,7 @@ import { api, type DocumentDetail, type PageView } from '../api'
 import { fmtDate, fmtValue, formOf } from '../format'
 import { PageText } from '../components/PageText'
 import { ValueLayers } from '../components/ValueLayers'
+import { ActivityPanel } from '../components/ActivityPanel'
 import { FindingCard, StatusChip } from '../components/ui'
 import { Splitter } from '../components/Splitter'
 import { useColumnWidth } from '../useColumnWidth'
@@ -112,11 +113,16 @@ export function DocumentPage() {
         </section>
 
         {activeEv && (
-          <section>
-            <div className="section-title mb-1">Selected value</div>
-            <ValueLayers evId={activeEv} />
+          <section className="space-y-3">
+            <div>
+              <div className="section-title mb-1">Selected value</div>
+              <ValueLayers evId={activeEv} />
+            </div>
+            <ActivityPanel target={`ev:${activeEv}`} title="Review & notes on this value" />
           </section>
         )}
+
+        <ActivityPanel target={`doc:${doc.id}`} title="Review & notes on this document" />
 
         {doc.findings.length > 0 && (
           <section className="space-y-1.5">

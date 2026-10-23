@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type Finding, type Severity } from '../api'
 import { fmtEffect } from '../format'
-import { Empty, FindingCard } from '../components/ui'
+import { DecisionForm, Empty, FindingCard } from '../components/ui'
+import { useFindingStates } from '../queries'
+import { useSession } from '../session-context'
 
 const ORDER: Severity[] = ['error', 'warning', 'info']
 
@@ -17,6 +19,14 @@ export function FindingsPage() {
   const rows = id ? all.filter((f) => f.id === id)
     : check ? all.filter((f) => f.check.split('-')[0] === check) : all.filter((f) => f.severity === sev)
   const filter = id ?? check
+  const { data: states } = useFindingStates()
+  const { person } = useSession()
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [bulk, setBulk] = useState(false)
+  const openRows = rows.filter((f) => (states?.[f.id]?.state ?? 'open') === 'open')
+  const canDecide = !!person?.can.includes('judgment')
+  const chosen = rows.filter((f) => picked.has(f.id))
+  const toggle = (id: string, on: boolean) => setPicked((p) => { const n = new Set(p); if (on) n.add(id); else n.delete(id); return n })
   const fed = rows.reduce((n, f) => n + (f.federal_effect ?? 0), 0)
   const ca = rows.reduce((n, f) => n + (f.california_effect ?? 0), 0)
 
@@ -49,7 +59,22 @@ export function FindingsPage() {
         )}
       </div>
       <div className="mx-auto max-w-4xl space-y-2 p-4">
-        {rows.length === 0 ? <Empty>Nothing here.</Empty> : rows.map((f) => <FindingCard key={f.id} f={f} />)}
+        {canDecide && openRows.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-white p-2 text-[12px]">
+            <span className="text-slate-600">{picked.size} selected</span>
+            <button className="btn" onClick={() => setPicked(new Set(openRows.map((f) => f.id)))}>Select all open ({openRows.length})</button>
+            <button className="btn" onClick={() => setPicked(new Set())}>Clear</button>
+            <button className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40" disabled={!picked.size} onClick={() => setBulk(true)}>
+              One decision for the selected
+            </button>
+          </div>
+        )}
+        {bulk && chosen.length > 0 && (
+          <DecisionForm findings={chosen} onDone={() => { setBulk(false); setPicked(new Set()) }} />
+        )}
+        {rows.length === 0 ? <Empty>Nothing here.</Empty> : rows.map((f) => (
+          <FindingCard key={f.id} f={f} selected={picked.has(f.id)} onSelect={canDecide && openRows.length > 1 ? (on) => toggle(f.id, on) : undefined} />
+        ))}
       </div>
     </div>
   )

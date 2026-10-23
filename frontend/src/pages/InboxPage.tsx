@@ -6,6 +6,8 @@ import { useInbox } from '../queries'
 import { hrefFor } from '../refs'
 import { useSession } from '../session-context'
 import { Empty, SeverityChip } from '../components/ui'
+import { AnswerBox } from '../components/ActivityPanel'
+import { usePostBatch } from '../queries'
 
 // "My work": what this person should do next, worst first, in plain language.
 export function InboxPage() {
@@ -84,7 +86,8 @@ function pill(active: boolean) {
 }
 
 function hrefOf(i: InboxItem): string | null {
-  if (i.kind === 'group' && i.check) return `/findings?check=${i.check}`
+  if ((i.kind === 'group' || i.kind === 'decision_batch') && i.check) return `/findings?check=${i.check}`
+  if (i.kind === 'return' || i.target?.startsWith('ver:')) return '/filing'
   const href = i.target ? hrefFor(i.target) : null
   return href ?? (i.finding_id ? `/findings?id=${i.finding_id}` : null)
 }
@@ -129,6 +132,9 @@ function InboxCard({ item: i }: { item: InboxItem }) {
             {i.todo}
           </p>
           {i.proposal && !handled && <p className="mt-1 font-mono text-[12px] text-indigo-800">{i.proposal}</p>}
+          {i.kind === 'question' && i.event_id && <AnswerBox questionId={i.event_id} />}
+          {i.kind === 'decision_batch' && i.targets && <SignAll targets={i.targets} />}
+          {i.kind === 'reopened' && i.targets && <SignAll targets={i.targets} again />}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           {hasEffect && (
@@ -149,6 +155,23 @@ function InboxCard({ item: i }: { item: InboxItem }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// One review for decisions recorded together.
+function SignAll({ targets, again = false }: { targets: string[]; again?: boolean }) {
+  const { person } = useSession()
+  const post = usePostBatch()
+  const level = (['reviewer', 'partner'] as const).find((l) => l === person?.role)
+  if (!level || !person?.can.includes('signoff')) return null
+  return (
+    <div className="mt-1.5">
+      <button className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700" disabled={post.isPending}
+        onClick={() => post.mutate(targets.map((t) => ({ type: 'signoff', target: t, payload: { level } })))}>
+        {post.isPending ? 'Signing…' : `${again ? 'Sign again' : 'Sign off'} all ${targets.length} as ${level}`}
+      </button>
+      {post.error && <span className="ml-2 text-[12px] text-red-700">{(post.error as Error).message}</span>}
     </div>
   )
 }

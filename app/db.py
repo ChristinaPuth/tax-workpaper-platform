@@ -136,3 +136,16 @@ def mark_seen(eng: Engine, actor: str, event_id: int) -> None:
         elif event_id > cur._mapping["last_seen_event_id"]:
             conn.execute(user_state.update().where(user_state.c.actor == actor)
                          .values(last_seen_event_id=event_id))
+
+
+def put_snapshot(eng: Engine, *, kind: str, event_id: int, scope: list[str], hash: str, content: dict) -> None:
+    with eng.begin() as conn:
+        conn.execute(insert(snapshots).values(at=now(), kind=kind, event_id=event_id, scope=scope, hash=hash,
+                                              content=content))
+
+
+def snapshots_for(eng: Engine, kind: str) -> dict[int, dict]:
+    """event_id -> snapshot, for every snapshot of a kind."""
+    with eng.connect() as conn:
+        rows = conn.execute(select(snapshots).where(snapshots.c.kind == kind)).all()
+    return {r._mapping["event_id"]: dict(r._mapping) for r in rows}

@@ -230,7 +230,7 @@ export interface WorkingReturn {
 // ------------------------------------------------------------------ inbox
 export interface InboxItem {
   id: string
-  kind: 'finding' | 'group' | 'adjustment' | 'review_note' | 'question' | 'answer'
+  kind: 'finding' | 'group' | 'adjustment' | 'review_note' | 'question' | 'answer' | 'decision' | 'decision_batch' | 'reopened' | 'return'
   severity: Severity
   title: string
   what: string | null
@@ -249,6 +249,9 @@ export interface InboxItem {
   finding_id?: string
   handled_by?: string | null
   handled_at?: string | null
+  targets?: string[] // decision_batch / reopened batch: the nodes one action signs off
+  level?: 'preparer' | 'reviewer' | 'partner'
+  finding_ids?: string[]
 }
 
 export interface InboxSection {
@@ -286,9 +289,51 @@ export interface Overview {
 
 // open | adjusted (changed, waiting for review) | reviewed - one rule shared with the Inbox
 export interface FindingState {
-  state: 'open' | 'adjusted' | 'reviewed'
+  state: 'open' | 'adjusted' | 'decided' | 'reviewed'
+  decision?: string
+  authority?: string
   by?: string
   at?: string
   event_id?: number
   line?: string
 }
+
+// ------------------------------------------------------------------ sign-offs and the filing gate
+export interface SignoffStatus {
+  event_id: number
+  target: string
+  level: 'preparer' | 'reviewer' | 'partner'
+  actor: string
+  at: string
+  valid: boolean
+  scope_size: number
+  changed: { node: string; what: string }[]
+  changed_count: number
+  verified_since: number
+}
+
+export interface GateStep {
+  n: number
+  title: string
+  status: 'done' | 'open' | 'later'
+  detail: string
+  links: string[]
+  progress: { done: number; total: number } | null
+}
+
+export interface Gate {
+  ready: boolean
+  steps: GateStep[]
+  blockers: { kind: string; title: string; target: string | null; count?: number }[]
+  summary: { steps_done: number; steps_total: number; blockers: number }
+}
+
+export const VERIFICATION_TYPES = [
+  'agreed_to_source_document',
+  'recalculated',
+  'confirmed_with_client',
+  'agreed_to_prior_year',
+  'agreed_to_third_party_record',
+] as const
+
+export const JUDGMENT_KINDS = ['explanation', 'judgment', 'election', 'due_diligence', 'penalty'] as const

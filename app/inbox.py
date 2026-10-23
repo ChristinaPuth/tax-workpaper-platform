@@ -19,6 +19,7 @@ from collections import defaultdict
 from workpaper.findings import Finding
 from workpaper.working import WorkingReturn
 
+from .logview import LogView
 from .people import Person
 
 PARTNER_THRESHOLD = 1000  # firm rule: adjustments with a tax effect over 1,000 need partner sign-off
@@ -174,42 +175,28 @@ def _sort(items: list[dict]) -> list[dict]:
     return sorted(items, key=lambda i: (SEVERITY_RANK.get(i.get("severity"), 3), -_effect_size(i), i["title"]))
 
 
-# ------------------------------------------------------------------ state derived from the event log
-class LogView:
-    def __init__(self, events: list[dict]):
-        self.undone = {e["payload"].get("event_id") for e in events if e["type"] == "undo"}
-        self.live = [e for e in events if e["id"] not in self.undone and e["type"] != "undo"]
-        self.by_target: dict[str, list[dict]] = defaultdict(list)
-        for e in self.live:
-            if e.get("target"):
-                self.by_target[e["target"]].append(e)
-        self.resolved_notes = {e["payload"].get("event_id") for e in self.live if e["type"] == "resolve_note"}
-        self.answered = {e["payload"].get("event_id") for e in self.live if e["type"] == "answer"}
-
-    def last(self, target: str, etype: str) -> dict | None:
-        es = [e for e in self.by_target.get(target, []) if e["type"] == etype]
-        return es[-1] if es else None
-
-    def signed_after(self, target: str, after_id: int, levels: tuple[str, ...], not_by: str | None = None) -> bool:
-        return any(e["type"] == "signoff" and e["id"] > after_id and e["payload"].get("level") in levels
-                   and e["actor"] != not_by for e in self.by_target.get(target, []))
-
-
 # ------------------------------------------------------------------ finding state
 def finding_state(f: Finding, log: LogView, version: str) -> dict:
-    """open | adjusted (a line this finding proposed to correct was changed, waiting for review) |
-    reviewed (a reviewer or partner other than the author signed off after the change).
+    """open | adjusted (a line it proposed to correct was changed) | decided (a decision was recorded on it)
+    | reviewed (a reviewer or partner other than the author signed off after the latest of those).
 
     Only a proposed correction can be settled by an adjustment. Findings that ask for an explanation or
-    a decision (prior-year variance, outside filings, engine diagnostics) stay open after the number
-    changes - they are settled by recording the explanation or decision."""
+    a decision (prior-year variance, outside filings, engine diagnostics, identity) are settled by
+    recording a decision - with its authority - against the finding."""
     lines = [f"line:{version}:{c.line}" for c in f.corrections]
     adj = next((a for t in lines if (a := log.last(t, "adjust"))), None)
-    if not adj:
+    decision = next((e for e in reversed(log.of_type("judgment")) if e["payload"].get("finding_id") == f.id), None)
+    latest = max((x for x in (adj, decision) if x), key=lambda x: x["id"], default=None)
+    if latest is None:
         return {"state": "open"}
-    reviewed = log.signed_after(adj["target"], adj["id"], ("reviewer", "partner"), adj["actor"])
-    return {"state": "reviewed" if reviewed else "adjusted", "by": adj["actor"], "at": adj["at"],
-            "event_id": adj["id"], "line": adj["target"].split(":", 2)[2]}
+    reviewed = log.signed_after(latest["target"], latest["id"], ("reviewer", "partner"), latest["actor"])
+    out = {"state": "reviewed" if reviewed else ("adjusted" if latest is adj else "decided"),
+           "by": latest["actor"], "at": latest["at"], "event_id": latest["id"],
+           "line": latest["target"].split(":", 2)[2] if latest["target"].startswith("line:") else None}
+    if latest is decision:
+        out["decision"] = decision["payload"].get("decision")
+        out["authority"] = decision["payload"].get("authority")
+    return out
 
 
 def finding_states(findings: list[Finding], events: list[dict], version: str) -> dict[str, dict]:
@@ -228,15 +215,18 @@ def _finding_items(findings: list[Finding], packet, log: LogView, version: str, 
         family = f.check.split("-")[0]
         if f.severity == "info":
             continue
-        if family in GROUPED:
-            groups[family].append(f)
+        if family in GROUPED:  # only what is still open; handled ones wait for review as a decision batch
+            if finding_state(f, log, version)["state"] == "open":
+                groups[family].append(f)
             continue
         st = finding_state(f, log, version)
         proposal = "; ".join(f"Change {c.line} from {_fmt(c.current)} to {_fmt(c.proposed)}" for c in f.corrections)
         why, todo = _plain(f.check, bool(f.corrections))
-        if st["state"] == "adjusted":
+        if st["state"] in ("adjusted", "decided"):
             who = people.get(st["by"])
-            why = f"{who.name if who else st['by']} changed {st['line']} on {st['at'][:10]}."
+            name = who.name if who else st["by"]
+            why = (f"{name} changed {st['line']} on {st['at'][:10]}." if st["state"] == "adjusted"
+                   else f"{name} decided on {st['at'][:10]}: {st['decision']} (authority: {st['authority']}).")
             todo = "Nothing to do until a reviewer signs off."
         items.append(_item(
             id=f.id, kind="finding", severity=f.severity, title=f.title, what=f.detail, why=why, todo=todo,
@@ -276,8 +266,117 @@ def _adjustment_items(working: WorkingReturn, packet, people: dict, version: str
     return out
 
 
+def _question_items(person: Person, log: LogView, packet, people: dict) -> list[dict]:
+    """Questions addressed to this person (client or colleague) that nobody has answered yet."""
+    out = []
+    for e in log.of_type("question"):
+        if e["payload"].get("to") != person.id or e["id"] in log.answered:
+            continue
+        who = people.get(e["actor"])
+        out.append(_item(
+            id=f"q:{e['id']}", kind="question", severity="warning", title=e["payload"].get("text", ""), what=None,
+            why=("Your preparer needs this to finish your return." if person.role == "client"
+                 else f"{who.name if who else e['actor']} asked you."),
+            todo="Reply with what you know - your answer is kept as evidence.", proposal=None,
+            area=area_of([e["target"]], packet), target=e["target"], event_id=e["id"], actor=e["actor"],
+            state="open"))
+    return out
+
+
+def _decision_items(findings: list[Finding], log: LogView, packet, people: dict, version: str,
+                    working: WorkingReturn | None = None) -> list[dict]:
+    """Decisions recorded against findings that no reviewer has signed off yet. Decisions recorded together
+    (one batch) are reviewed together: one item, one sign-off for all."""
+    by_id = {f.id: f for f in findings}
+    events = {e["id"]: e for e in log.live}
+    out = []
+    for f in findings:
+        st = finding_state(f, log, version)
+        if st["state"] != "decided":
+            continue
+        who = people.get(st["by"])
+        out.append(_item(
+            id=f"dec:{st['event_id']}", kind="decision", severity="warning",
+            title=f"{who.name if who else st['by']} decided {f.id}: {by_id[f.id].title}",
+            what=f"{st['decision']} - Authority: {st['authority']}",
+            why="A decision on an issue needs a second person's review before filing.",
+            todo="Check the decision and its authority, then sign off - or leave a review note.", proposal=None,
+            area=area_of(f.nodes, packet), target=events[st["event_id"]]["target"],
+            event_id=st["event_id"], actor=st["by"], finding_id=f.id, state="open",
+            batch_id=events[st["event_id"]].get("batch_id")))
+    batches: dict[str, list[dict]] = defaultdict(list)
+    for item in out:
+        if item["batch_id"]:
+            batches[item["batch_id"]].append(item)
+    # A sign-off covers everything on a node. Signing a batch must not quietly approve a different change
+    # waiting on the same node, so those nodes are held back to be reviewed on their own.
+    pending: dict[str, set] = defaultdict(set)
+    for a in (working.adjustments if working else []):
+        t = f"line:{version}:{a.key}"
+        if not log.signed_after(t, a.event_id, ("reviewer", "partner"), a.actor):
+            pending[t].add(f"adj:{a.event_id}")
+    for item in out:
+        pending[item["target"]].add(item["batch_id"] or item["id"])
+    grouped = []
+    for item in out:
+        group = batches.get(item["batch_id"]) if item["batch_id"] else None
+        if not group or len(group) == 1:
+            grouped.append(item)
+        elif group[0] is item:
+            who = people.get(item["actor"])
+            checks = {by_id[g["finding_id"]].check.split("-")[0] for g in group}
+            targets = sorted({g["target"] for g in group})
+            held = [t for t in targets if pending[t] - {item["batch_id"]}]
+            clean = [t for t in targets if t not in held]
+            grouped.append(_item(
+                id=f"decbatch:{item['batch_id']}", kind="decision_batch", severity="warning",
+                title=f"{who.name if who else item['actor']} recorded one decision for {len(group)} issues",
+                what=item["what"], why="Decisions recorded together can be reviewed together.",
+                todo=(f"Check the decision and its authority, then sign off all {len(clean)} - or leave a review note."
+                      + (f" {len(held)} held back: those lines have other changes to review on their own."
+                         if held else "")),
+                proposal=None, area=None, target=None, actor=item["actor"], state="open", count=len(group),
+                check=checks.pop() if len(checks) == 1 else None,
+                targets=clean, held_back=held, finding_ids=[g["finding_id"] for g in group]))
+    return grouped
+
+
+def _reopened_items(person: Person, signoffs: list[dict], packet, version: str) -> list[dict]:
+    """This person's sign-offs that no longer hold. Sign-offs given together (one batch) that reopened
+    together come back as one item, to be signed again together."""
+    mine = [s for s in signoffs if s["actor"] == person.id and not s["valid"]]
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for s in mine:
+        groups[s["batch_id"] or f"one:{s['event_id']}"].append(s)
+    out = []
+    for key, group in groups.items():
+        s = group[0]
+        changes: dict[str, str] = {}
+        for g in group:
+            for c in g["changed"]:
+                changes.setdefault(c["node"].split(":", 2)[-1], c["what"])
+        what = "; ".join(f"{k}: {w}" for k, w in list(changes.items())[:3])
+        more = f" (+{len(changes) - 3} more)" if len(changes) > 3 else ""
+        if len(group) == 1:
+            label = "the whole return" if s["target"] == f"ver:{version}" else s["target"].split(":", 2)[-1]
+            title = f"Your {s['level']} sign-off on {label} reopened - {s['changed_count']} change(s) since you signed"
+            target, targets = s["target"], None
+        else:
+            title = f"{len(group)} of your {s['level']} sign-offs, given together, reopened"
+            target, targets = None, sorted(g["target"] for g in group)
+        out.append(_item(
+            id=f"reopen:{key}", kind="reopened", severity="error", title=title, what=what + more,
+            why="Something you signed changed after you signed it.",
+            todo="Review what changed, then sign again - or leave a review note.", proposal=None,
+            area=area_of([s["target"]], packet) if len(group) == 1 and s["target"].startswith("line:") else None,
+            target=target, targets=targets, level=s["level"], count=len(group), event_id=s["event_id"],
+            state="open"))
+    return out
+
+
 def build_inbox(person: Person, *, packet, findings: list[Finding], events: list[dict], working: WorkingReturn,
-                people: dict) -> dict:
+                people: dict, signoffs: list[dict] | None = None) -> dict:
+    signoffs = signoffs or []
     version = working.version
     log = LogView(events)
     sections: list[dict] = []
@@ -296,16 +395,15 @@ def build_inbox(person: Person, *, packet, findings: list[Finding], events: list
 
     role = person.role
     if role == "client":
-        qs = [e for e in log.live if e["type"] == "question" and e["payload"].get("to") == person.id
-              and e["id"] not in log.answered]
-        section("questions", "Questions for you", [
-            _item(id=f"q:{e['id']}", kind="question", severity="warning", title=e["payload"].get("text", ""),
-                  what=None, why="Your preparer needs this to finish your return.", todo="Reply with what you know.",
-                  proposal=None, area=area_of([e["target"]], packet), target=e["target"], event_id=e["id"],
-                  actor=e["actor"], state="open") for e in qs])
+        section("questions", "Questions for you", _question_items(person, log, packet, people))
     elif role == "firm_administrator":
         pass
     else:
+        section("reopened", "Your sign-offs reopened", _reopened_items(person, signoffs, packet, version),
+                "What you signed changed after you signed it.")
+        section("questions", "Questions for you", _question_items(person, log, packet, people))
+        decisions = [d for d in _decision_items(findings, log, packet, people, version, working)
+                     if d["actor"] != person.id]
         found = _finding_items(findings, packet, log, version, people)
         batches = [i for i in found if i["kind"] == "group"]
         found = [i for i in found if i["kind"] != "group"]
@@ -330,16 +428,27 @@ def build_inbox(person: Person, *, packet, findings: list[Finding], events: list
                       why="The answer is now evidence on this line.", todo="Use it to settle the line.", proposal=None,
                       area=area_of([e["target"]], packet), target=e["target"], event_id=e["id"], actor=e["actor"],
                       state="open") for e in replies])
-            section("done", "Changed, waiting for review", _sort([i for i in found if i["state"] == "adjusted"]),
+            section("done", "Changed, waiting for review",
+                    _sort([i for i in found if i["state"] in ("adjusted", "decided")]),
                     "Nothing to do until a reviewer signs off.", needs_you=False)
         elif role == "reviewer":
             section("review", "Waiting for your review",
-                    _sort([a for a in adjustments if a["state"] == "open" and a["actor"] != person.id]),
-                    "Changes by others. You cannot review your own work.")
+                    _sort([a for a in adjustments if a["state"] == "open" and a["actor"] != person.id] + decisions),
+                    "Changes and decisions by others. You cannot review your own work.")
             section("open", "Issues nobody has handled yet", _sort([i for i in found if i["state"] == "open"]))
             section("notes", "Your open review notes", _sort([n for n in note_items if n["actor"] == person.id]),
                     "Waiting on the preparer.", needs_you=False)
         elif role == "partner":
+            ret = f"ver:{version}"
+            reviewer_ok = any(x["target"] == ret and x["level"] == "reviewer" and x["valid"] for x in signoffs)
+            partner_ok = any(x["target"] == ret and x["level"] == "partner" and x["valid"] for x in signoffs)
+            if reviewer_ok and not partner_ok:
+                section("return", "Return ready for partner sign-off", [_item(
+                    id="return:partner", kind="return", severity="warning",
+                    title="The reviewer signed off the whole return", what=None,
+                    why="Filing needs a partner sign-off on the whole return (step 11).",
+                    todo="Open Filing, check the steps and blockers, then sign off.", proposal=None,
+                    area=None, target=ret, state="open")])
             section("partner", "Needs partner sign-off",
                     _sort([a for a in adjustments if a["needs_partner"] and not a["partner_signed"]
                            and a["actor"] != person.id]),
@@ -347,7 +456,7 @@ def build_inbox(person: Person, *, packet, findings: list[Finding], events: list
             section("errors", "Errors still open", _sort([i for i in found if i["state"] == "open" and i["severity"] == "error"]))
         elif role == "quality_reviewer":
             section("errors", "All errors", _sort([i for i in found if i["severity"] == "error"]))
-            section("changes", "All changes", _sort(adjustments))
+            section("changes", "All changes and decisions", _sort(adjustments + decisions))
 
     total = sum(len(s["items"]) for s in sections if s["needs_you"])
     return {"person": person.id, "role": role, "total": total, "sections": [s for s in sections if s["items"]],

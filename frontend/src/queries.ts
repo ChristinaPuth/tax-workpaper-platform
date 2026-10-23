@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { api, type FindingState, type Inbox, type LineRow, type Overview, type Severity, type WorkingReturn } from './api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, type FindingState, type Gate, type Inbox, type LineRow, type Overview, type Severity, type SignoffStatus, type WorkEvent, type WorkingReturn } from './api'
 import { useSession } from './session-context'
 
 export function useOverview() {
@@ -42,4 +42,50 @@ export function openFindings(row: LineRow, states: Record<string, FindingState> 
     else open[r.severity] = (open[r.severity] ?? 0) + 1
   }
   return { open, addressed }
+}
+
+export function useSignoffs() {
+  return useQuery({ queryKey: ['signoffs'], queryFn: () => api<SignoffStatus[]>('/signoffs') })
+}
+
+export function useGate() {
+  return useQuery({ queryKey: ['gate'], queryFn: () => api<Gate>('/gate') })
+}
+
+// Everything derived from the event log; refreshed after any write (here or, via SSE, by someone else).
+export const LOG_DERIVED = ['events', 'changes', 'working', 'inbox', 'finding-states', 'signoffs', 'gate']
+
+export function useRefreshLog() {
+  const qc = useQueryClient()
+  return () => LOG_DERIVED.forEach((key) => qc.invalidateQueries({ queryKey: [key] }))
+}
+
+export interface NewEvent {
+  type: string
+  target?: string | null
+  payload: Record<string, unknown>
+}
+
+export function usePostEvent() {
+  const refresh = useRefreshLog()
+  return useMutation({
+    mutationFn: (e: NewEvent) => api<WorkEvent>('/events', { method: 'POST', body: JSON.stringify(e) }),
+    onSuccess: refresh,
+  })
+}
+
+export function usePostBatch() {
+  const refresh = useRefreshLog()
+  return useMutation({
+    mutationFn: (events: NewEvent[]) =>
+      api<{ batch_id: string; events: WorkEvent[] }>('/events/batch', { method: 'POST', body: JSON.stringify({ events }) }),
+    onSuccess: refresh,
+  })
+}
+
+export function useTargetEvents(target: string, types?: string) {
+  return useQuery({
+    queryKey: ['events', target, types ?? 'all'],
+    queryFn: () => api<WorkEvent[]>(`/events?target=${encodeURIComponent(target)}${types ? `&type=${types}` : ''}`),
+  })
 }

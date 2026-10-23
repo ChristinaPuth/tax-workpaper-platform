@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api, type LineDetail, type LineRow, type Source, type TraceNode } from '../api'
 import { openFindings, useFindingStates, useLines, useWorking } from '../queries'
+import { ActivityPanel } from './ActivityPanel'
 import { AdjustPanel } from './AdjustPanel'
 import { fmtValue, formOf } from '../format'
 import { Ref } from './Ref'
@@ -72,6 +73,8 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
         adjustment={working?.adjustments.find((a) => a.key === lineKey)}
         proposals={proposals}
       />
+
+      {working && <ActivityPanel target={`line:${version}:${lineKey}`} />}
 
       {detail.findings.length > 0 && (
         <section className="space-y-1.5">

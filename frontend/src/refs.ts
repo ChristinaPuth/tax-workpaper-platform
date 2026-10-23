@@ -17,6 +17,10 @@ export function hrefFor(id: string): string | null {
       const [doc, page] = tail.split('#')
       return `/documents/${doc}?page=${page}`
     }
+    case 'finding':
+      return `/findings?id=${tail}`
+    case 'ver':
+      return '/filing'
     default:
       return null
   }
@@ -26,5 +30,7 @@ export function shortLabel(id: string): string {
   if (id.startsWith('line:')) return id.split(':').slice(2).join(':')
   if (id.startsWith('ev:') || id.startsWith('doc:')) return id.split(':')[1]
   if (id.startsWith('page:')) return id.slice(5).replace('#', ' p')
+  if (id.startsWith('finding:')) return id.slice(8)
+  if (id.startsWith('ver:')) return 'the return'
   return id
 }

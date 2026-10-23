@@ -12,9 +12,13 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from workpaper.working import build
+
 from . import db
 from .live import stream
+from .logview import LogView
 from .people import Forbidden, Invalid, Person, check
+from .signoff import scope_of, take
 
 router = APIRouter(prefix="/api")
 
@@ -74,7 +78,20 @@ def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
         latest = s.store.packet.latest["version"]
         if not (target.startswith(f"line:{latest}:") or target.startswith("ev:")):
             raise HTTPException(422, f"adjust a line of the current version ({latest}) or an extracted value")
-    prior = _flag(db.read_events(eng, target=target), _undone_ids(eng)) if target else []
+    if ne.type == "question":
+        to = ne.payload.get("to")
+        if to not in s.people or to == person.id:
+            raise HTTPException(422, "a question is addressed to someone else (payload.to, see /api/people)")
+    if ne.type == "judgment" and ne.payload.get("finding_id"):
+        if not any(f.id == ne.payload["finding_id"] for f in s.store.findings):
+            raise HTTPException(422, f"no finding {ne.payload['finding_id']!r}")
+    undone = _undone_ids(eng)
+    if ne.type == "signoff":
+        # no self-review across everything the sign-off covers, not just the node itself
+        scope = set(scope_of(s.store.packet, s.store.index, target, s.store.packet.latest["version"]))
+        prior = _flag([e for e in db.read_events(eng) if e.get("target") in scope], undone)
+    else:
+        prior = _flag(db.read_events(eng, target=target), undone) if target else []
     try:
         check(person, ne.type, ne.payload,
               verification_types=s.store.packet.firm["starter_standards"]["verification_types"],
@@ -101,14 +118,32 @@ def list_events(request: Request, target: str | None = None, type: str | None = 
                                 after=after, limit=limit), _undone_ids(eng))
 
 
+def _append(request: Request, row: dict, batch_id: str | None = None, cache: dict | None = None) -> dict:
+    """Append one validated event; a sign-off also stores the snapshot it will be checked against.
+    cache: shared across a batch - sign-offs do not change any number, so one working return serves all."""
+    s = request.app.state
+    snapshot = None
+    if row["type"] == "signoff":
+        cache = cache if cache is not None else {}
+        if "working" not in cache:
+            events = db.read_events(s.db)
+            cache["working"] = build(s.store.packet, s.store.index, events)
+            cache["log"] = LogView(events)
+        scope, content, digest = take(s.store.packet, s.store.index, cache["working"], cache["log"], row["target"])
+        row["payload"] = {**row["payload"], "hash": digest, "scope_size": len(scope)}
+        snapshot = (scope, content, digest)
+    ev = db.event_dict(db.append_event(s.db, batch_id=batch_id, **row))
+    if snapshot:
+        db.put_snapshot(s.db, kind="signoff", event_id=ev["id"], scope=snapshot[0], hash=snapshot[2],
+                        content=snapshot[1])
+    s.broker.publish(ev)
+    return ev
+
+
 @router.post("/events", status_code=201)
 async def post_event(ne: NewEvent, request: Request, x_actor: str | None = Header(None)) -> dict:
     person = _actor(request, x_actor)
-    row = _validate(request, person, ne)
-    ev = db.append_event(request.app.state.db, **row)
-    ev = db.event_dict(ev)
-    request.app.state.broker.publish(ev)
-    return ev
+    return _append(request, _validate(request, person, ne))
 
 
 @router.post("/events/batch", status_code=201)
@@ -117,11 +152,9 @@ async def post_batch(b: Batch, request: Request, x_actor: str | None = Header(No
     person = _actor(request, x_actor)
     rows = [_validate(request, person, ne) for ne in b.events]
     batch_id = uuid.uuid4().hex
-    out = []
-    for row in rows:
-        ev = db.event_dict(db.append_event(request.app.state.db, batch_id=batch_id, **row))
-        request.app.state.broker.publish(ev)
-        out.append(ev)
+    numbers_change = any(r["type"] in ("adjust", "undo", "judgment", "attach") for r in rows)
+    cache = None if numbers_change else {}
+    out = [_append(request, row, batch_id, cache) for row in rows]
     return {"batch_id": batch_id, "events": out}
 
 

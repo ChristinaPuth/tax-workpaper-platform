@@ -32,6 +32,10 @@ EVENT_TYPES = {
     "view_sensitive",  # written by the server when a cleared user unmasks a field
 }
 
+# judgment: a judgment call; election: a tax election; due_diligence: e.g. Form 8867;
+# penalty: a penalty decision; explanation: why a number moved or why an issue needs no change
+JUDGMENT_KINDS = {"judgment", "election", "due_diligence", "penalty", "explanation"}
+
 _STAFF_WORK = {"note", "question", "answer", "verify", "adjust", "judgment", "signoff", "attach", "undo"}
 ALLOWED: dict[str, set[str]] = {
     "preparer": _STAFF_WORK,
@@ -97,8 +101,13 @@ def check(person: Person, etype: str, payload: dict, *, verification_types: list
     if etype == "adjust":
         if "new_value" not in payload or not str(payload.get("reason", "")).strip():
             raise Invalid("an adjustment needs new_value and a reason")
-    if etype == "judgment" and not str(payload.get("authority", "")).strip():
-        raise Invalid("every judgment call records the authority relied on")  # firm rule
+    if etype == "judgment":
+        if payload.get("kind") not in JUDGMENT_KINDS:
+            raise Invalid(f"kind must be one of {sorted(JUDGMENT_KINDS)}")
+        if not str(payload.get("decision", "")).strip():
+            raise Invalid("a judgment records the decision")
+        if not str(payload.get("authority", "")).strip():
+            raise Invalid("every judgment call records the authority relied on")  # firm rule
     if etype in ("note", "review_note", "question") and not str(payload.get("text", "")).strip():
         raise Invalid(f"{etype} needs text")
 

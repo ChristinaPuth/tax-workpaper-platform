@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { DocumentPage } from './pages/DocumentPage'
 import { DocumentsPage } from './pages/DocumentsPage'
+import { FilingPage } from './pages/FilingPage'
 import { FindingsPage } from './pages/FindingsPage'
 import { InboxPage } from './pages/InboxPage'
 import { ReturnPage } from './pages/ReturnPage'
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/documents/:id" element={<DocumentPage />} />
         <Route path="/value/:id" element={<ValueRedirect />} />
         <Route path="/findings" element={<FindingsPage />} />
+        <Route path="/filing" element={<FilingPage />} />
         <Route path="*" element={<Navigate to="/inbox" replace />} />
       </Route>
     </Routes>
