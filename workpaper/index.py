@@ -241,17 +241,25 @@ class Index:
 
         return walk(f"line:{version}:{key}", 0)
 
-    def lines_fed_by(self, nid: str, version: str) -> set[str]:
-        """Upward trace: every line in a version that depends (directly or transitively) on a node."""
+    def lines_fed_by(self, nid: str, version: str) -> dict[str, int]:
+        """Upward trace: every line in a version that depends (directly or transitively) on a node,
+        with its distance (1 = directly). Breadth-first, so each line keeps its shortest distance.
+
+        A value or parameter reaches lines that cite it as a source; a line reaches the lines computed
+        from it. A line does not count as depending on itself."""
         direct = [s for s in self.sources(nid, "sourced_from") if s.startswith(f"line:{version}:")]
-        out: set[str] = set()
-        stack = list(direct)
-        while stack:
-            lid = stack.pop()
-            if lid in out:
-                continue
-            out.add(lid)
-            stack.extend(s for s in self.sources(lid, "computed_from"))
+        if nid.startswith(f"line:{version}:"):
+            direct += self.sources(nid, "computed_from")
+        out: dict[str, int] = {}
+        frontier, depth = list(dict.fromkeys(direct)), 1
+        while frontier:
+            nxt = []
+            for lid in frontier:
+                if lid in out or lid == nid:
+                    continue
+                out[lid] = depth
+                nxt.extend(self.sources(lid, "computed_from"))
+            frontier, depth = nxt, depth + 1
         return out
 
     def document_landing(self, doc_id: str, version: str | None = None) -> dict:

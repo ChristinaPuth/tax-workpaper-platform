@@ -115,9 +115,11 @@ def impact(node_id: str, request: Request, version: str | None = None) -> dict:
     if node_id not in ix.nodes:
         raise HTTPException(404, f"no node {node_id!r}")
     version = version or p.latest["version"]
-    lines = sorted(ix.lines_fed_by(node_id, version))
-    detail = [{"key": lid.split(":", 2)[2], "label": p.line(lid.split(":", 2)[2], version)["label"],
-               "value": p.line(lid.split(":", 2)[2], version)["value"]} for lid in lines]
+    fed = ix.lines_fed_by(node_id, version)
+    detail = []
+    for lid in sorted(fed, key=lambda l: (fed[l], l)):  # nearest first
+        line = p.line(lid.split(":", 2)[2], version)
+        detail.append({"key": line["key"], "label": line["label"], "value": line["value"], "distance": fed[lid]})
     return {"node": node_id, "version": version, "label": ix.nodes[node_id].label, "lines_fed": detail}
 
 

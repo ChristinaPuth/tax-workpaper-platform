@@ -18,7 +18,7 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
   })
   const { data: impact } = useQuery({
     queryKey: ['impact', version, lineKey],
-    queryFn: () => api<{ lines_fed: { key: string; label: string; value: number }[] }>(
+    queryFn: () => api<{ lines_fed: Downstream[] }>(
       `/impact/${encodeURIComponent(`line:${version}:${lineKey}`)}?version=${version}`),
   })
   const { data: lines = [] } = useLines(version)
@@ -75,17 +75,57 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
         </div>
       </section>
 
-      {downstream.length > 0 && (
-        <section>
-          <div className="section-title mb-1">Feeds {downstream.length} line{downstream.length > 1 ? 's' : ''}</div>
-          <div className="flex flex-wrap gap-1">
-            {downstream.slice(0, 40).map((l) => (
-              <Ref key={l.key} id={`line:${version}:${l.key}`} />
-            ))}
-          </div>
-        </section>
-      )}
+      {downstream.length > 0 && <Feeds version={version} lines={downstream} />}
     </div>
+  )
+}
+
+interface Downstream {
+  key: string
+  label: string
+  value: number | string | null
+  distance: number
+}
+
+// Where this number goes: the lines computed directly from it, then everything further down on request.
+function Feeds({ version, lines }: { version: string; lines: Downstream[] }) {
+  const [open, setOpen] = useState(false)
+  const direct = lines.filter((l) => l.distance === 1)
+  const further = lines.filter((l) => l.distance > 1)
+  return (
+    <section>
+      <div className="section-title mb-1">
+        Feeds {lines.length} line{lines.length > 1 ? 's' : ''}
+      </div>
+      <div className="rounded-md border border-slate-200 bg-white p-1.5">
+        <div className="px-1 pb-0.5 text-[11px] text-slate-400">Directly</div>
+        {direct.map((l) => (
+          <Link
+            key={l.key}
+            to={`/return?v=${version}&form=${formOf(l.key)}&line=${l.key}`}
+            className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-slate-50 hover:text-indigo-700"
+          >
+            <span className="font-mono text-[11px] text-slate-400">{l.key}</span>
+            <span className="min-w-0 flex-1 truncate">{l.label}</span>
+            <span className="num w-24 text-right">{fmtValue(l.value)}</span>
+          </Link>
+        ))}
+        {further.length > 0 && (
+          <div className="mt-1 border-t border-slate-100 px-1 pt-1">
+            <button onClick={() => setOpen(!open)} className="text-[12px] text-indigo-700 hover:underline">
+              {open ? 'Hide' : 'Show'} {further.length} more further down
+            </button>
+            {open && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {further.map((l) => (
+                  <Ref key={l.key} id={`line:${version}:${l.key}`} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 

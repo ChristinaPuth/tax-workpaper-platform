@@ -161,7 +161,16 @@ def test_frontend_routes_fall_back_to_the_app_shell(tmp_path, monkeypatch):
     (tmp_path / "assets" / "app.js").write_text("console.log(1)")
     monkeypatch.setattr(main, "FRONTEND_DIST", tmp_path)
     with TestClient(main.create_app(str(PACKET), f"sqlite:///{tmp_path / 'db.sqlite'}")) as c:
-        assert "id=root" in c.get("/documents/D23?page=3").text      # client-side route
+        shell = c.get("/documents/D23?page=3")
+        assert "id=root" in shell.text                                 # client-side route
+        assert shell.headers["cache-control"] == "no-cache"            # a new build is never hidden by cache
         assert c.get("/assets/app.js").text == "console.log(1)"
         assert c.get("/api/overview").json()["latest_version"] == "v3"  # API still wins
         assert c.get("/api/nope").status_code == 404                  # unknown API path is not the shell
+
+
+def test_impact_from_a_line_reaches_the_lines_computed_from_it(client):
+    keys = [l["key"] for l in client.get("/api/impact/line:v3:SchC.31", params={"version": "v3"}).json()["lines_fed"]]
+    assert {"SchSE.2", "Sch1.3", "F1040.11"} <= set(keys)   # net profit -> SE tax, Schedule 1, AGI
+    assert "SchC.31" not in keys                              # a line does not feed itself
+    assert keys[0] in {"SchSE.2", "Sch1.3", "F8995.2.1", "SchCA540NR.12.A"}  # nearest first, not alphabetical

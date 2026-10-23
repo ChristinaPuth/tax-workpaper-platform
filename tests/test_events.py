@@ -182,3 +182,38 @@ def test_stream_replays_missed_then_delivers_live():
         assert broker.subscribers == 0
 
     asyncio.run(run())
+
+
+def test_stream_ends_when_the_server_stops():
+    """An open SSE stream must not hold the server open on shutdown or --reload."""
+    import threading
+
+    async def run():
+        stopping = threading.Event()
+        broker = Broker()
+        gen = stream(broker, lambda: [], heartbeat=60, stopping=stopping)
+        nxt = asyncio.ensure_future(gen.__anext__())
+        await asyncio.sleep(0.1)
+        stopping.set()
+        with pytest.raises(StopAsyncIteration):
+            await asyncio.wait_for(nxt, 2)
+        assert broker.subscribers == 0
+
+    asyncio.run(run())
+
+
+def test_exit_signal_sets_the_stop_flag_and_still_reaches_the_server():
+    import signal
+    from app import live
+
+    seen = []
+    prev_term = signal.signal(signal.SIGTERM, lambda s, f: seen.append(s))  # stands in for uvicorn's handler
+    prev_int = signal.getsignal(signal.SIGINT)
+    try:
+        live.install_exit_signal_hook()
+        signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+        assert live.SHUTTING_DOWN.is_set() and seen == [signal.SIGTERM]
+    finally:
+        signal.signal(signal.SIGTERM, prev_term)
+        signal.signal(signal.SIGINT, prev_int)
+        live.SHUTTING_DOWN.clear()

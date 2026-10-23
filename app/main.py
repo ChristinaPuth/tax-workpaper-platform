@@ -29,7 +29,7 @@ from workpaper.packet import packet_path as default_packet_path
 from .api import router
 from .db import make_engine
 from .events_api import router as events_router
-from .live import Broker
+from .live import Broker, install_exit_signal_hook
 from .documents import page_coverage
 from .people import directory
 
@@ -65,6 +65,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
         app.state.people = directory(app.state.store.packet)
         app.state.db = make_engine(database_url)
         app.state.broker = Broker()
+        install_exit_signal_hook()  # open live streams end on shutdown instead of holding it up
         yield
         app.state.db.dispose()
 
@@ -83,7 +84,8 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
             f = (FRONTEND_DIST / path).resolve()
             if path and f.is_file() and FRONTEND_DIST in f.parents:
                 return FileResponse(f)
-            return FileResponse(FRONTEND_DIST / "index.html")
+            # the shell must be revalidated so a new build is picked up; hashed assets can cache forever
+            return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
     return app
 
 
