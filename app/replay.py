@@ -67,7 +67,7 @@ def state_at(packet, findings, at: str) -> dict:
             alerts.append({"kind": "rejected", "text": f"{err['code']}: {err['message']}", "findings": related})
     for n in notices:
         if n.get("response_due", "") >= at:
-            alerts.append({"kind": "notice", "text": f"{n['type']} - response due {n['response_due']}",
+            alerts.append({"kind": "notice", "notice": n["id"], "text": f"{n['type']} - response due {n['response_due']}",
                            "document": n.get("document"), "items": n.get("items_under_examination", [])})
     upcoming = [x for x in key_dates(packet) if x["date"] > at][:3]
     return {

@@ -13,6 +13,12 @@ export const AREA_REPORTS: [string, string][] = [
   ['deductions', 'Deductions, credits & limits'],
   ['k1', 'K-1s & S corporation basis'],
   ['state', 'State split'],
+  ['tax', 'Tax computation'],
+  ['depreciation', 'Depreciation by asset'],
+  ['carryovers', 'Carryovers'],
+  ['books', 'Books to tax'],
+  ['retirement', 'Retirement & foreign'],
+  ['prior', 'Prior preparer vs this year'],
 ]
 
 type Issue = { id: string; title: string; severity: string; state: string }
@@ -26,6 +32,9 @@ type Block =
   | { type: 'table'; title: string; columns: string[]; column_labels: Record<string, string>
       rows: { line: string; label: string; cols: Record<string, { key: string; value: unknown; issues: string[] }>; ca_share: number | null }[] }
   | { type: 'residency'; title: string; note: string; rows: { state: string; from: string; to: string; status: string }[] }
+  | { type: 'grid'; title: string; note: string | null; columns: { key: string; label: string; num: boolean }[]; rows: (Record<string, unknown> & { link?: string })[] }
+  | { type: 'issues'; title: string; note: string | null; rows: { id: string; title: string; severity: string; state: string }[] }
+  | { type: 'memo'; title: string; note: string | null; rows: { text: string; issues: { id: string; title: string; severity: string; state: string }[]; documents: { id: string; title: string; received: string }[] }[] }
 
 export function AreaReports() {
   const [params, setParams] = useSearchParams()
@@ -67,6 +76,28 @@ function BlockView({ b, version }: { b: Block; version: string }) {
         {b.type === 'checks' && <ChecksTable rows={b.rows} />}
         {b.type === 'k1' && <K1Table b={b} version={version} />}
         {b.type === 'table' && <ColumnsTable b={b} version={version} />}
+        {b.type === 'grid' && <GridTable b={b} />}
+        {b.type === 'issues' && (
+          <ul className="px-2 py-1 text-[13px]">
+            {b.rows.map((r) => <li key={r.id} className="py-0.5"><IssueChip i={r} /> <Link to={`/findings?id=${r.id}`} className="hover:underline">{r.title}</Link></li>)}
+          </ul>
+        )}
+        {b.type === 'memo' && (
+          <ul className="divide-y divide-slate-100 text-[13px]">
+            {b.rows.map((r, k) => (
+              <li key={k} className="px-2 py-1.5">
+                <div className="text-slate-800">{r.text}</div>
+                {(r.issues.length > 0 || r.documents.length > 0) && (
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[12px] text-slate-500">
+                    <span>This year:</span>
+                    {r.issues.map((i) => <Link key={i.id} to={`/findings?id=${i.id}`} title={i.title} className="hover:underline"><IssueChip i={i} /> {i.id}</Link>)}
+                    {r.documents.map((d) => <Ref key={d.id} id={`doc:${d.id}`} />)}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         {b.type === 'residency' && (
           <ul className="px-2 py-1 text-[13px]">
             {b.rows.map((r) => <li key={r.state}>{r.state} {r.status}: {fmtDate(r.from)} - {fmtDate(r.to)}</li>)}
@@ -196,4 +227,35 @@ function ColumnsTable({ b, version }: { b: Extract<Block, { type: 'table' }>; ve
 }
 
 // for the Areas cards: which detailed report covers an area
-export const AREA_REPORT_FOR: Record<string, string> = { rentals: 'rentals', deductions: 'deductions', passthroughs: 'k1', california: 'state' }
+export const AREA_REPORT_FOR: Record<string, string> = { rentals: 'rentals', deductions: 'deductions', passthroughs: 'k1', california: 'state', business: 'books', totals: 'tax' }
+
+function IssueChip({ i }: { i: { severity: string; state: string } }) {
+  const cls = i.state !== 'open' ? 'border-slate-300 bg-slate-100 text-slate-600'
+    : i.severity === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-800'
+  return <span className={`chip ${cls}`}>{i.state !== 'open' ? 'handled' : i.severity}</span>
+}
+
+function GridTable({ b }: { b: Extract<Block, { type: 'grid' }> }) {
+  return (
+    <table className="w-full text-[13px]">
+      <thead className="text-left text-[11px] uppercase tracking-wide text-slate-500">
+        <tr>{b.columns.map((c) => <th key={c.key} className={`px-2 py-1 font-medium ${c.num ? 'text-right' : ''}`}>{c.label}</th>)}</tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {b.rows.map((r, k) => (
+          <tr key={k}>
+            {b.columns.map((c, j) => {
+              const v = r[c.key]
+              const diff = c.key === 'difference' && typeof v === 'number' && v !== 0
+              return (
+                <td key={c.key} className={`px-2 py-1 ${c.num ? 'num text-right' : ''} ${diff ? 'font-medium text-amber-800' : ''}`}>
+                  {j === 0 && r.link ? <Ref id={r.link}>{fmtValue(v)}</Ref> : v === null || v === undefined || v === '' ? <span className="text-slate-300">—</span> : fmtValue(v)}
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}

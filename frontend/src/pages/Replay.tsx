@@ -16,7 +16,7 @@ type Replay = {
   efile: { date: string; jurisdiction: string; status: string; submission_id: string; errors: { code: string; message: string }[] }[]
   filing_status: Record<string, string>
   transcript: { as_of: string; transactions: { date: string; code: string; description: string; amount: unknown }[] } | null
-  alerts: { kind: string; text: string; findings?: string[]; document?: string; items?: string[] }[]
+  alerts: { kind: string; text: string; findings?: string[]; document?: string; items?: string[]; notice?: string }[]
   deadlines: { what: string; date: string; passed: boolean }[]
   upcoming: { date: string; label: string }[]
 }
@@ -66,6 +66,9 @@ export function Replay() {
           )}
           {a.items && <ul className="ml-4 mt-1 list-disc">{a.items.map((x) => <li key={x}>{x}</li>)}</ul>}
           {a.document && <div className="mt-1"><Ref id={`doc:${a.document}`} /></div>}
+          {a.kind === 'notice' && a.notice && (
+            <Link to={`/notices/${a.notice}`} className="mt-1 inline-block font-medium underline">Build the evidence pack →</Link>
+          )}
         </div>
       ))}
 

@@ -90,7 +90,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
         app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
-        @app.get("/{path:path}", include_in_schema=False)
+        @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)  # HEAD: health checks
         def spa(path: str) -> FileResponse:
             # client-side routes (/documents/D23, /return?line=...) all load the app shell
             if path.startswith("api/"):

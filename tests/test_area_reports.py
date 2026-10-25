@@ -80,3 +80,43 @@ def test_reports_follow_adjustments(c):
     row = next(r for r in interest["rows"] if r["key"] == "SchA.8a")
     assert (row["engine"], row["working"], row["kind"]) == (21847, 19697, "adjusted")
     assert c.get("/api/reports/area/nope").status_code == 404
+
+
+def test_tax_computation_recomputations_agree(c):
+    rep = report(c, "tax")
+    ch = checks(rep)
+    assert len(ch) >= 5 and all(x["agrees"] for x in ch.values())
+    assert any("Schedule D tax worksheet" in k for k in ch)
+
+
+def test_depreciation_assets_add_up_to_the_return(c):
+    rep = report(c, "depreciation")
+    assets = next(b for b in rep["blocks"] if b["type"] == "grid")
+    assert len(assets["rows"]) == 9
+    assert all(x["agrees"] for x in checks(rep).values())          # rental A, rental B, studio
+
+
+def test_carryovers_in_and_out(c):
+    rep = report(c, "carryovers")
+    rows = {r["item"]: r for r in next(b for b in rep["blocks"] if b["type"] == "grid")["rows"]}
+    assert rows["Suspended passive loss - 1450 Fremont Way"]["in"] == 6300
+    assert rows["Minimum tax credit"]["out"] == 3871 and rows["Minimum tax credit"]["what"] == "new in 2025"
+    assert all(x["agrees"] for x in checks(rep).values())
+
+
+def test_books_to_tax_shows_the_1099k_gap(c):
+    rep = report(c, "books")
+    rows = next(b for b in rep["blocks"] if b["type"] == "grid")["rows"]
+    receipts = next(r for r in rows if r["tax"] == 163700)
+    assert receipts["difference"] == 12400                         # the 1099-K added on top of the books (F-015)
+    meals = next(r for r in rows if r["item"] == "Meals")
+    assert meals["difference"] == -1980
+
+
+def test_retirement_and_prior_preparer(c):
+    outside = next(b for b in report(c, "retirement")["blocks"] if b["type"] == "issues")
+    assert outside["rows"] and all(r["id"].startswith("F-") for r in outside["rows"])
+    open_items = report(c, "prior")["blocks"][1]["rows"]
+    assert len(open_items) == 4
+    form3520 = next(r for r in open_items if "3520" in r["text"])
+    assert any("3520" in i["title"] for i in form3520["issues"])

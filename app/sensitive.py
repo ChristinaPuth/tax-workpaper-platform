@@ -74,7 +74,7 @@ def _keep_last4(text: str) -> str:
 # ------------------------------------------------------------------ what clients may read
 CLIENT_BLOCKED = ("/api/findings", "/api/finding-states", "/api/reports/areas", "/api/reports/reconciliations",
                   "/api/reports/area/", "/api/search", "/api/compare", "/api/what-if", "/api/events", "/api/stream",
-                  "/api/working", "/api/trace", "/api/impact", "/api/me/changes", "/api/replay")
+                  "/api/working", "/api/trace", "/api/impact", "/api/me/changes", "/api/replay", "/api/notices")
 CLIENT_INTERNAL_KEYS = {"findings": [], "finding_refs": [], "finding_id": None, "finding_state": None,
                         "blockers": [], "findings_total": None, "findings_by_severity": {}}
 

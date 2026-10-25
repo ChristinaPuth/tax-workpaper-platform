@@ -5,7 +5,7 @@ stored, so they can never drift from the log.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from workpaper.working import build
 
@@ -15,6 +15,7 @@ from .gate import build_gate
 from .inbox import AREAS, build_inbox, finding_states
 from .logview import LogView
 from .area_reports import REPORTS, build_area_report
+from .notices import build_pack, render_html
 from .replay import key_dates, state_at
 from .reports import areas, reconciliations, summary_vs_prior
 from .signoff import statuses
@@ -137,7 +138,7 @@ def area_report(name: str, request: Request) -> dict:
     events = db.read_events(s.db)
     working = build(s.store.packet, s.store.index, events)
     try:
-        return build_area_report(name, s.store.packet, working, s.store.findings, LogView(events))
+        return build_area_report(name, s.store.packet, working, s.store.findings, LogView(events), s.store.verified)
     except KeyError:
         raise HTTPException(404, f"no area report {name!r}; use one of {sorted(REPORTS)}")
 
@@ -154,3 +155,45 @@ def replay(request: Request, at: str | None = None) -> dict:
         raise HTTPException(422, "at is a date: YYYY-MM-DD")
     out["key_dates"] = dates
     return out
+
+
+# ------------------------------------------------------------------------- notices
+@router.get("/notices")
+def notices(request: Request) -> list[dict]:
+    p = request.app.state.store.packet
+    return [n for n in p.raw["tax_agency_records"]["notices"] if n["tax_year"] == p.tax_year]
+
+
+def _pack(request: Request, notice_id: str) -> dict:
+    s = request.app.state
+    events = db.read_events(s.db)
+    working = build(s.store.packet, s.store.index, events)
+    try:
+        return build_pack(notice_id, s.store.packet, s.store.index, working, s.store.findings, events,
+                          signoff_statuses(request, events, working), s.people)
+    except KeyError:
+        raise HTTPException(404, f"no notice {notice_id!r}")
+
+
+@router.get("/notices/{notice_id}/pack")
+def notice_pack(notice_id: str, request: Request) -> dict:
+    """Everything that supports each item the notice asks about, from the record."""
+    return _pack(request, notice_id)
+
+
+@router.get("/notices/{notice_id}/pack.html")
+def notice_pack_html(notice_id: str, request: Request, x_actor: str | None = Header(None)) -> Response:
+    """The pack as one page to print or attach. Unmasked only for staff with clearance, and that export is logged."""
+    s = request.app.state
+    person = _actor(request, x_actor)
+    if not person.is_staff:
+        raise HTTPException(403, "for the firm only")
+    page = render_html(_pack(request, notice_id))
+    if person.clearance:
+        ev = db.event_dict(db.append_event(s.db, actor=person.id, role=person.role, type="view_sensitive",
+                                           target=f"notice:{notice_id}", payload={"fields": ["evidence pack export"]}))
+        s.broker.publish(ev)
+    else:
+        page = s.sensitive.mask_text(page)
+    return Response(page, media_type="text/html", headers={
+        "Content-Disposition": f'attachment; filename="evidence-pack-{notice_id}.html"'})

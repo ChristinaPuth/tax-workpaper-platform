@@ -175,6 +175,7 @@ def test_frontend_routes_fall_back_to_the_app_shell(tmp_path, monkeypatch):
         assert c.get("/assets/app.js").text == "console.log(1)"
         assert c.get("/api/overview").json()["latest_version"] == "v3"  # API still wins
         assert c.get("/api/nope").status_code == 404                  # unknown API path is not the shell
+        assert c.head("/inbox").status_code == 200                    # health checks may use HEAD
 
 
 def test_impact_from_a_line_reaches_the_lines_computed_from_it(client):

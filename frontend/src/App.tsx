@@ -6,6 +6,7 @@ import { FilingPage } from './pages/FilingPage'
 import { FindingsPage } from './pages/FindingsPage'
 import { InboxPage } from './pages/InboxPage'
 import { PortalPage } from './pages/PortalPage'
+import { NoticePage } from './pages/NoticePage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ReturnPage } from './pages/ReturnPage'
 import { ValueRedirect } from './pages/ValueRedirect'
@@ -17,6 +18,7 @@ export default function App() {
         <Route index element={<Navigate to="/inbox" replace />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/portal" element={<PortalPage />} />
+        <Route path="/notices/:id" element={<NoticePage />} />
         <Route path="/return" element={<ReturnPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/documents/:id" element={<DocumentPage />} />
