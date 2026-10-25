@@ -167,4 +167,4 @@ def fx_rate_period(c: Ctx):
                   f"Converted at {rate_used} ({rname}); the {year} average is {rate_right}. "
                   f"{fmt(line['value'])} should be {fmt(new)}.",
                   nodes=[c.L(key), f"fx:{cur}.{rname}"], evidence=[f"fx:{cur}.{right}"],
-                  corrections=[Correction(key, line["value"], new, cat)], deltas=[(cat, new - line["value"])])
+                  corrections=[Correction(key, line["value"], new, cat)], deltas=[(cat, new - line["value"], c.p.california_category(key))])

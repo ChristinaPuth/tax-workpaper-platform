@@ -7,6 +7,7 @@ import { openFindings, useFindingStates, useLines, useOverview, useWorking } fro
 import { Empty, FlagDots, KindBadge } from '../components/ui'
 import { Splitter } from '../components/Splitter'
 import { useColumnWidth } from '../useColumnWidth'
+import { Tech, Term } from '../components/Help'
 
 // [engine summary jurisdiction, engine summary key, working summary key or working line key, label]
 const SUMMARY_FIELDS: [string, string, string, string][] = [
@@ -17,6 +18,11 @@ const SUMMARY_FIELDS: [string, string, string, string][] = [
   ['california', 'total_tax', 'ca_total_tax', 'CA tax'],
   ['california', 'balance_due', 'ca_balance_due', 'CA balance due'],
 ]
+
+const SUMMARY_TERM: Record<string, string> = {
+  AGI: 'AGI', 'Taxable income': 'Taxable income', 'Total tax': 'Total tax', 'Federal balance due': 'Balance due',
+  'CA tax': '540NR', 'CA balance due': 'Balance due',
+}
 
 function sum(rows: LineRow[], s: Severity, states: Record<string, FindingState> | undefined) {
   return rows.reduce((n, r) => n + (openFindings(r, states).open[s] ?? 0), 0)
@@ -90,7 +96,7 @@ export function ReturnPage() {
             const w = workingFor(working, wk)
             return (
               <div key={label} className="leading-tight">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400"><Term t={SUMMARY_TERM[label]}>{label}</Term></div>
                 {w?.changed ? (
                   <div className="flex items-baseline gap-1.5">
                     <span className="num font-semibold text-indigo-800" title={w.estimated ? 'Estimated: change x tax-effect rates' : 'Recomputed'}>
@@ -115,7 +121,7 @@ export function ReturnPage() {
       )}
 
       <div className="flex min-h-0 flex-1">
-        <nav style={{ width: formsCol.width }} className="shrink-0 overflow-y-auto bg-white py-1">
+        <nav style={{ width: formsCol.width }} className="min-w-[140px] shrink overflow-y-auto bg-white py-1">
           {FORMS.filter(([f]) => byForm[f]).map(([f, name]) => {
             const rows = byForm[f]
             const e = sum(rows, 'error', states)
@@ -136,7 +142,7 @@ export function ReturnPage() {
         </nav>
         <Splitter side="left" width={formsCol.width} onChange={formsCol.setWidth} onReset={formsCol.reset} />
 
-        <section className="min-w-0 flex-1 overflow-y-auto">
+        <section className="min-w-[240px] flex-1 overflow-y-auto">
           <div className="sticky top-0 z-10 flex items-center border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur">
             <h1 className="font-semibold text-slate-900">{FORM_NAME[form] ?? form}</h1>
             {hasChanges && (
@@ -156,7 +162,7 @@ export function ReturnPage() {
         </section>
 
         <Splitter side="right" width={traceCol.width} onChange={traceCol.setWidth} onReset={traceCol.reset} />
-        <aside style={{ width: traceCol.width }} className="shrink-0 overflow-y-auto bg-slate-50">
+        <aside style={{ width: traceCol.width }} className="min-w-[300px] shrink overflow-y-auto bg-slate-50">
           {selected ? (
             <TracePanel version={version} lineKey={selected} />
           ) : (
@@ -205,7 +211,7 @@ function LinesTable({ rows, working, states, selected, onSelect }: {
                 onClick={() => onSelect(r.key)}
                 className={`cursor-pointer border-b border-slate-100 ${r.key === selected ? 'bg-indigo-50' : 'bg-white hover:bg-slate-50'}`}
               >
-                <td className="w-28 px-4 py-1.5 font-mono text-[11px] text-slate-400">{r.key}</td>
+                <Tech><td className="w-28 px-4 py-1.5 font-mono text-[11px] text-slate-400">{r.key}</td></Tech>
                 <td className="py-1.5 pr-2">
                   {r.label}
                   {r.jurisdiction === 'california' && <span className="chip ml-1 border-slate-200 text-slate-500">CA</span>}

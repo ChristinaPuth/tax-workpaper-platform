@@ -9,6 +9,7 @@ import { ActivityPanel } from '../components/ActivityPanel'
 import { FindingCard, StatusChip } from '../components/ui'
 import { Splitter } from '../components/Splitter'
 import { useColumnWidth } from '../useColumnWidth'
+import { useMarkVisited } from '../queries'
 
 export function DocumentPage() {
   const { id = '' } = useParams()
@@ -16,6 +17,7 @@ export function DocumentPage() {
   const { data: doc } = useQuery({ queryKey: ['document', id], queryFn: () => api<DocumentDetail>(`/documents/${id}`) })
   const page = Number(params.get('page') || doc?.pages[0] || 1)
   const activeEv = params.get('ev')
+  useMarkVisited('trace', !!activeEv) // a value opened on its page: the end of following a number
   const { data: view } = useQuery({
     queryKey: ['page', id, page],
     queryFn: () => api<PageView>(`/documents/${id}/pages/${page}`),
@@ -35,7 +37,7 @@ export function DocumentPage() {
 
   return (
     <div className="flex h-full min-h-0">
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex min-w-[320px] flex-1 flex-col">
         <header className="border-b border-slate-200 bg-white px-4 py-2">
           <div className="flex items-center gap-2 text-[11px] text-slate-400">
             <Link to="/documents" className="hover:text-indigo-700">
@@ -82,7 +84,7 @@ export function DocumentPage() {
       </section>
 
       <Splitter side="right" width={sideCol.width} onChange={sideCol.setWidth} onReset={sideCol.reset} />
-      <aside style={{ width: sideCol.width }} className="shrink-0 space-y-4 overflow-y-auto bg-slate-50 p-4">
+      <aside style={{ width: sideCol.width }} className="min-w-[300px] shrink space-y-4 overflow-y-auto bg-slate-50 p-4">
         <section>
           <div className="section-title mb-1">Where this document went</div>
           <div className="rounded-md border border-slate-200 bg-white p-2.5">

@@ -63,6 +63,11 @@ class Ctx:
                               "nodes": nodes})
 
     # ---- helpers -------------------------------------------------------------
+    def ca_category_for_sale(self, sold: str) -> str | None:
+        """A sale while a California resident is fully California-source: its California effect uses
+        ca_source_income (packet README), not the residency-prorated gain rate."""
+        return "ca_source_income" if self.p.ca_resident_on(sold) else None
+
     def ev_lines(self, ev_id: str) -> list[str]:
         """Latest-version lines that cite this extracted value directly."""
         return [s for s in self.ix.sources(f"ev:{ev_id}", "sourced_from") if s.startswith(f"line:{self.ver}:")]

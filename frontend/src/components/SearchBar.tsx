@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api, type SearchResult } from '../api'
 import { fmtValue, formOf } from '../format'
 import { hrefFor } from '../refs'
+import { useMySettings, useUpdateSettings } from '../queries'
 
 interface Hit {
   group: string
@@ -74,8 +75,11 @@ export function SearchBar() {
   const hits = useMemo(() => (data && data.query.trim() === debounced ? flatten(data) : []), [data, debounced])
   useEffect(() => setActive(0), [debounced])
 
+  const { data: settings } = useMySettings()
+  const update = useUpdateSettings()
   const go = (h: Hit | undefined) => {
     if (!h?.href) return
+    if (settings && settings.quick_start.some((s) => s.id === 'search' && !s.done)) update.mutate({ visited: ['search'] })
     navigate(h.href)
     setOpen(false)
     input.current?.blur()
@@ -83,7 +87,7 @@ export function SearchBar() {
 
   let lastGroup = ''
   return (
-    <div className="relative w-80">
+    <div className="relative w-40 xl:w-56 2xl:w-80">
       <input
         ref={input}
         value={q}
@@ -113,7 +117,7 @@ export function SearchBar() {
       />
       <kbd className="pointer-events-none absolute right-2 top-1.5 text-[10px] text-slate-400">⌘K</kbd>
       {open && debounced && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-[70vh] w-[28rem] overflow-y-auto rounded-md border border-slate-200 bg-white text-slate-800 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-[70vh] w-[28rem] max-w-[calc(100vw-2rem)] overflow-y-auto md:left-auto md:right-0 xl:left-0 xl:right-auto rounded-md border border-slate-200 bg-white text-slate-800 shadow-xl">
           {data?.amount !== null && data?.amount !== undefined && (
             <div className="border-b border-slate-100 px-3 py-1.5 text-[11px] text-slate-500">
               Amounts equal to <b className="num">{fmtValue(data.amount)}</b> first, then text matches

@@ -28,6 +28,7 @@ def supplemental_basis(c: Ctx):
         evs = [c.p.ev[s] for s in line["sources"] if s.startswith("ev-")]
         basis = next((e for e in evs if e["field"].endswith("_basis")), None)
         acq = next((e for e in evs if e["field"].endswith(("_acquired", "_acq"))), None)
+        sold = next((e["value"] for e in evs if e["field"].endswith("_sold")), None)
         if not basis or not acq or basis["text_as_read"] != "" or any(s.startswith("ev-") and c.p.ev[s]["field"].endswith("_adjusted_basis") for s in line["sources"]):
             continue
         hit = supp.get(acq["value"])
@@ -46,7 +47,7 @@ def supplemental_basis(c: Ctx):
               nodes=[c.L(key), f"ev:{basis['id']}", f"ev:{se['id']}"],
               evidence=[f"page:{se['document_id']}#{se['page']}", f"page:{basis['document_id']}#{basis['page']}"],
               corrections=[Correction(key, line["value"], new, term)],
-              deltas=[(term, new - line["value"])])
+              deltas=[(term, new - line["value"], c.ca_category_for_sale(sold) if sold else None)])
 
 
 @check("J2-card-receipts-already-in-books")
@@ -224,7 +225,8 @@ def crypto_basis(c: Ctx):
           nodes=[c.L("F8949.H.C6"), "msg:msg-07", "ev:ev-0918", "ev:ev-0919"], evidence=["msg:msg-07", "page:D35#1"],
           corrections=[Correction("F8949.H.C6", proceeds, 0, "stcg"),
                        Correction("F8949.K.C6", None, new_gain, "ltcg" if lt else "stcg")],
-          deltas=[("stcg", -proceeds), ("ltcg" if lt else "stcg", new_gain)], generic=False)
+          deltas=[("stcg", -proceeds, c.ca_category_for_sale(sold)),
+                  ("ltcg" if lt else "stcg", new_gain, c.ca_category_for_sale(sold))], generic=False)
 
 
 @check("J11-client-answer-contradicts-records")

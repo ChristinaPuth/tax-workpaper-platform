@@ -77,7 +77,18 @@ def test_no_self_review_across_the_signed_scope(c):
     post(c, DANIEL, "adjust", "line:v3:SchC.1", new_value=151300, reason="1099-K already in books")
     r = post(c, DANIEL, "signoff", "line:v3:F1040.11", level="reviewer")  # AGI depends on what Daniel changed
     assert r.status_code == 403
+    assert "you worked on SchC.1" in r.json()["detail"]
     assert post(c, HELEN, "signoff", "line:v3:F1040.11", level="reviewer").status_code == 201
+
+
+def test_a_refused_batch_names_what_stopped_it(c):
+    post(c, DANIEL, "adjust", "line:v3:SchC.1", new_value=151300, reason="1099-K already in books")
+    signs = [{"type": "signoff", "target": t, "payload": {"level": "reviewer"}}
+             for t in ("line:v3:SchE.14A", "line:v3:F1040.11", RETURN)]
+    r = c.post("/api/events/batch", headers={"X-Actor": DANIEL}, json={"events": signs})
+    assert r.status_code == 403
+    assert r.json()["detail"].startswith("2 of 3 refused (F1040.11, the whole return)")
+    assert signoffs(c) == []                                      # all or nothing
 
 
 def test_reopened_signoff_lands_in_the_signers_inbox(c):

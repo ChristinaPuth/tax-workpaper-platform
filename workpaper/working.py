@@ -155,6 +155,9 @@ def estimate(p: Packet, key: str, delta: float, category: str | None = None,
     if cat == "ca_credit":
         return {"category": cat, "federal": 0.0, "california": -base, "estimated": True}
     rf, rc = p.tax_effect_rate(cat, version)
+    ca_cat = p.california_category(key, version)  # a fully California-source line uses that California rate
+    if ca_cat:
+        rc = p.tax_effect_rate(ca_cat, version)[1]
     return {"category": cat, "federal": round(base * rf, 2), "california": round(base * rc, 2), "estimated": True}
 
 

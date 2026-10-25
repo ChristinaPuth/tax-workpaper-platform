@@ -5,6 +5,7 @@ import { DocumentsPage } from './pages/DocumentsPage'
 import { FilingPage } from './pages/FilingPage'
 import { FindingsPage } from './pages/FindingsPage'
 import { InboxPage } from './pages/InboxPage'
+import { ReportsPage } from './pages/ReportsPage'
 import { ReturnPage } from './pages/ReturnPage'
 import { ValueRedirect } from './pages/ValueRedirect'
 
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/documents/:id" element={<DocumentPage />} />
         <Route path="/value/:id" element={<ValueRedirect />} />
         <Route path="/findings" element={<FindingsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/filing" element={<FilingPage />} />
         <Route path="*" element={<Navigate to="/inbox" replace />} />
       </Route>

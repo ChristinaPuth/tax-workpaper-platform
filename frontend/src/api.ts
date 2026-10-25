@@ -79,6 +79,7 @@ export interface TraceNode {
 
 export interface Finding {
   id: string
+  area: string | null
   check: string
   title: string
   severity: Severity
@@ -337,3 +338,73 @@ export const VERIFICATION_TYPES = [
 ] as const
 
 export const JUDGMENT_KINDS = ['explanation', 'judgment', 'election', 'due_diligence', 'penalty'] as const
+
+// ---- reports
+export interface SummaryRow {
+  label: string
+  key: string
+  prior_key: string
+  prior: number | null
+  prior_source: string | null
+  engine: number | null
+  working: number | null
+  adjusted: boolean
+  change: number | null
+  pct: number | null
+  over_threshold: boolean
+  finding_id: string | null
+  finding_state: FindingState['state'] | null
+}
+
+export interface SummaryReport {
+  version: string
+  prior_prepared_by: string
+  prior_filed: string
+  threshold: { pct: number; abs: number }
+  sections: { key: string; title: string; note: string | null; rows: SummaryRow[] }[]
+}
+
+export interface AreaCard {
+  key: string
+  label: string
+  budget_hours: number | null
+  status: 'errors' | 'warnings' | 'review' | 'clear'
+  issues: Record<Severity, number>
+  open: { error: number; warning: number }
+  handled: number
+  reviewed: number
+  open_effect: { federal: number; california: number }
+  changes: number
+  change_effect: { federal: number; california: number }
+  documents: number
+  top_open: { id: string; title: string; severity: Severity }[]
+  inbox_open: number
+  grouped_open: Record<string, number>
+}
+
+export interface ReconciliationGroup {
+  title: string
+  covers: string[]
+  agree: { check: string; what: string; engine: number; independent: number; nodes: string[] }[]
+  differ: {
+    finding_id: string
+    check: string
+    title: string
+    severity: Severity
+    state: FindingState['state']
+    corrections: { line: string; current: number | string | null; proposed: number | string | null }[]
+    effect: { federal: number | null; california: number | null }
+    nodes: string[]
+  }[]
+}
+
+// ---- a person's own settings and the quick start
+export interface MySettings {
+  settings: { mode: 'simple' | 'expert'; glossary: boolean; quick_start: boolean }
+  defaults: { mode: 'simple' | 'expert'; glossary: boolean; quick_start: boolean }
+  reason: string
+  changed: string[]
+  quick_start: { id: string; title: string; body: string; href: string | null; done: boolean }[]
+  as_of: string
+}
+export type QuickStartPage = 'inbox' | 'trace' | 'search' | 'filing' | 'reports'

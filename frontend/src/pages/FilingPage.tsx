@@ -6,6 +6,7 @@ import { ActivityPanel } from '../components/ActivityPanel'
 import { Ref } from '../components/Ref'
 import { useGate, useLatestVersion } from '../queries'
 import { hrefFor } from '../refs'
+import { useMarkVisited } from '../queries'
 
 const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: string }> = {
   done: { icon: '✓', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', label: 'done' },
@@ -14,6 +15,7 @@ const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: str
 }
 
 export function FilingPage() {
+  useMarkVisited('filing')
   const { data: gate } = useGate()
   const version = useLatestVersion()
   if (!gate) return <div className="p-6 text-slate-400">Checking whether the return can be filed…</div>

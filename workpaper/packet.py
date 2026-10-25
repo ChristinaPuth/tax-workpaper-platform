@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -132,6 +133,26 @@ class Packet:
     def tax_effect_rate(self, category: str, version: str | None = None) -> tuple[float, float]:
         r = self.version[version or self.latest["version"]]["tax_effect_rates"][category]
         return r["federal_per_dollar"], r["california_per_dollar"]
+
+    def ca_resident_on(self, iso_date: str) -> bool:
+        return any(r["state"] == "CA" and r["status"] == "resident" and r["from"] <= iso_date <= r["to"]
+                   for r in self.household["residency"])
+
+    def california_category(self, key: str, version: str | None = None) -> str | None:
+        """'ca_source_income' when a line is fully California-source, so its California effect uses that rate
+        (README: "a sale during California residency, the Sacramento rental"); None for the usual rate."""
+        line = self.line(key, version)
+        if line is None:
+            return None
+        form, _, rest = key.partition(".")
+        if form == "F8949":
+            sold = next((self.ev[s]["value"] for s in line.get("sources", [])
+                         if s in self.ev and self.ev[s]["field"].endswith("_sold")), None)
+            return "ca_source_income" if sold and self.ca_resident_on(sold) else None
+        if form in ("SchE", "F4562-E") and key[-1].isupper():   # property lines end in the property letter
+            prop = self.line(f"SchE.1{key[-1]}", version)
+            return "ca_source_income" if prop and re.search(r",\s*[A-Za-z .]+ CA\b", str(prop["value"])) else None
+        return None
 
     def resolve_pointer(self, root: str, pointer: str) -> Any:
         """Resolve an RFC 6901 JSON pointer inside prior_years (py) or tax_agency_records (agency)."""

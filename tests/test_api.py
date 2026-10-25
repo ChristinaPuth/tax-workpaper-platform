@@ -131,6 +131,14 @@ def test_search(client):
     assert body["extracted_values"]
 
 
+def test_search_numbers_match_whole_numbers_only(client):
+    ids = lambda q: {f["id"] for f in client.get("/api/search", params={"q": q}).json()["findings"]}
+    assert "F-015" in ids("12,400") and "F-015" in ids("12400")
+    assert "F-036" not in ids("12,400")                         # 156,039 -> 212,400 is not 12,400
+    assert "F-036" in ids("212,400")
+    assert "F-026" in ids("3520")                               # "Form 3520" is still found as text
+
+
 def test_lines_carry_finding_flags(client):
     rows = {r["key"]: r for r in client.get("/api/versions/v3/lines").json()}
     assert rows["SchC.1"]["findings"].get("error") == 1          # 1099-K counted twice
@@ -174,3 +182,14 @@ def test_impact_from_a_line_reaches_the_lines_computed_from_it(client):
     assert {"SchSE.2", "Sch1.3", "F1040.11"} <= set(keys)   # net profit -> SE tax, Schedule 1, AGI
     assert "SchC.31" not in keys                              # a line does not feed itself
     assert keys[0] in {"SchSE.2", "Sch1.3", "F8995.2.1", "SchCA540NR.12.A"}  # nearest first, not alphabetical
+
+
+def test_plain_labels_name_what_a_reference_is(client):
+    r = client.get("/api/labels", headers={"Accept-Encoding": "gzip"})
+    assert r.headers.get("content-encoding") == "gzip"
+    labels = r.json()
+    assert labels["ev:ev-0127"] == "Box 1a gross amount · D21"
+    assert labels["line:v3:SchC.1"] == "Gross receipts"
+    assert labels["page:D15#3"] == "D15, page 3"
+    assert labels["ver:v3"] == "The whole return (v3)"
+    assert not any(v.startswith("ev-") for v in labels.values())

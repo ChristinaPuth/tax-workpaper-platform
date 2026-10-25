@@ -13,7 +13,9 @@ export function fmtEffect(v: number | null | undefined): string {
 }
 
 export function fmtDate(iso: string): string {
-  const d = new Date(iso)
+  // a bare date is a calendar day, not UTC midnight - parsed as UTC it shows the day before west of Greenwich
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  const d = day ? new Date(+day[1], +day[2] - 1, +day[3]) : new Date(iso)
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 

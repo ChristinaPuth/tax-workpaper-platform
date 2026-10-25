@@ -36,17 +36,34 @@ AREAS = {
     "deductions": "Deductions & credits",
     "payments": "Payments",
     "california": "California",
+    "totals": "Return totals",
+}
+# Form 1040 and Schedules 1-3 mix every area, so their lines are mapped one by one; other forms by prefix.
+_LINE_AREA = {
+    "F1040.1a": "wages", "F1040.1z": "wages",
+    "F1040.2b": "investments", "F1040.3a": "investments", "F1040.3b": "investments", "F1040.7": "investments",
+    "F1040.4a": "deductions", "F1040.4b": "deductions", "F1040.12": "deductions", "F1040.19": "deductions",
+    "F1040.20": "deductions", "F1040.13": "business",
+    "F1040.8": "totals", "F1040.9": "totals", "F1040.10": "totals", "F1040.11": "totals", "F1040.14": "totals",
+    "F1040.15": "totals", "F1040.16": "totals", "F1040.17": "totals", "F1040.18": "totals", "F1040.22": "totals",
+    "F1040.23": "totals", "F1040.24": "totals",
+    "F1040.25a": "payments", "F1040.25d": "payments", "F1040.26": "payments", "F1040.31": "payments",
+    "F1040.33": "payments", "F1040.37": "payments", "F1040.38": "payments",
+    "Sch1.3": "business", "Sch1.15": "business", "Sch1.16": "business", "Sch1.17": "business",
+    "Sch1.5": "rentals", "Sch1.13": "deductions", "Sch1.10": "totals", "Sch1.26": "totals",
+    "Sch2.1": "wages", "Sch2.11": "wages", "Sch2.4": "business", "Sch2.12": "investments",
+    "Sch2.3": "totals", "Sch2.21": "totals",
+    "Sch3.1": "investments", "Sch3.8": "totals", "Sch3.10": "payments", "Sch3.11": "payments", "Sch3.15": "payments",
 }
 _FORM_AREA = {
-    "F1040.1": "wages", "F8959": "wages", "F6251": "wages",
+    "F8959": "wages", "F6251": "wages",
     "SchB": "investments", "SchD": "investments", "F8949": "investments", "F8960": "investments", "F8938": "investments",
-    "SchC": "business", "F4562-C": "business", "SchSE": "business", "F8995": "business", "Sch1.1": "business",
+    "SchC": "business", "F4562-C": "business", "SchSE": "business", "F8995": "business",
     "SchE": "rentals", "F4562-E": "rentals", "F8582": "rentals", "F4797": "rentals",
     "F7203": "passthroughs",
     "SchA": "deductions", "F8283": "deductions", "F8812": "deductions", "F8863": "deductions", "F2441": "deductions",
     "F8889": "deductions", "F8606": "deductions", "F8867": "deductions",
-    "F1040.25": "payments", "F1040.26": "payments", "F1040.3": "payments", "Sch3": "payments", "F2210": "payments",
-    "F540NR.7": "payments",
+    "F2210": "payments", "F540NR.7": "payments",
     "SchCA540NR": "california", "F540NR": "california", "FTB": "california", "ScheduleS": "california",
 }
 _DOC_AREA = {
@@ -133,6 +150,8 @@ def area_of(nodes: list[str], packet) -> str:
     for n in nodes:
         if n.startswith("line:"):
             key = n.split(":", 2)[2]
+            if key in _LINE_AREA:
+                return _LINE_AREA[key]
             for prefix in sorted(_FORM_AREA, key=len, reverse=True):
                 if key.startswith(prefix):
                     return _FORM_AREA[prefix]

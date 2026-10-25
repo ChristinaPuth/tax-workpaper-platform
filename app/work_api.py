@@ -13,6 +13,8 @@ from . import db
 from .events_api import _actor
 from .gate import build_gate
 from .inbox import AREAS, build_inbox, finding_states
+from .logview import LogView
+from .reports import areas, reconciliations, summary_vs_prior
 from .signoff import statuses
 
 router = APIRouter(prefix="/api")
@@ -72,3 +74,30 @@ def gate(request: Request) -> dict:
     working = build(s.store.packet, s.store.index, events)
     return build_gate(packet=s.store.packet, index=s.store.index, findings=s.store.findings, events=events,
                       working=working, signoffs=signoff_statuses(request, events, working), people=s.people)
+
+
+# ------------------------------------------------------------------------- reports
+@router.get("/reports/summary")
+def report_summary(request: Request) -> dict:
+    """The return against last year's: 2024, 2025 engine, 2025 with adjustments, change, and the variance issue."""
+    s = request.app.state
+    events = db.read_events(s.db)
+    working = build(s.store.packet, s.store.index, events)
+    return summary_vs_prior(s.store.packet, working, s.store.findings, LogView(events))
+
+
+@router.get("/reports/areas")
+def report_areas(request: Request) -> list[dict]:
+    """One card per area: open issues and their effect, what was handled or reviewed, changes, documents, budget."""
+    s = request.app.state
+    events = db.read_events(s.db)
+    working = build(s.store.packet, s.store.index, events)
+    return areas(s.store.packet, working, s.store.findings, LogView(events))
+
+
+@router.get("/reports/reconciliations")
+def report_reconciliations(request: Request) -> list[dict]:
+    """Figures that should agree: the independent recomputations that agreed and the issues where they do not."""
+    s = request.app.state
+    return reconciliations(s.store.packet, s.store.verified, s.store.findings, LogView(db.read_events(s.db)),
+                           s.store.packet.latest["version"])

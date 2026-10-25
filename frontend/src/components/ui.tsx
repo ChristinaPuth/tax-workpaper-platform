@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { JUDGMENT_KINDS, type Finding, type FindingState, type Severity } from '../api'
-import { fmtEffect, fmtTime } from '../format'
-import { useFindingStates, usePostBatch } from '../queries'
+import { api, JUDGMENT_KINDS, type Finding, type FindingState, type Severity } from '../api'
+import { fmtEffect, fmtTime, fmtValue } from '../format'
+import { useFindingStates, useLatestVersion, usePostBatch, useView } from '../queries'
+import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../session-context'
 import { Ref } from './Ref'
+import { Tech, Term } from './Help'
 
 const SEV: Record<Severity, string> = {
   error: 'border-red-200 bg-red-50 text-red-700',
@@ -96,11 +98,7 @@ export function FindingCard({ f, compact = false, selected, onSelect }: {
           ) : null}
           {!compact && f.corrections.length > 0 && (
             <ul className="mt-1.5 space-y-0.5 text-[12px]">
-              {f.corrections.map((c, i) => (
-                <li key={i} className="font-mono text-slate-600">
-                  {c.line}: <span className="line-through">{String(c.current)}</span> → <b>{String(c.proposed)}</b>
-                </li>
-              ))}
+              {f.corrections.map((c, i) => <CorrectionLine key={i} line={c.line} current={c.current} proposed={c.proposed} />)}
             </ul>
           )}
           {!compact && (
@@ -120,9 +118,22 @@ export function FindingCard({ f, compact = false, selected, onSelect }: {
             )
           )}
         </div>
-        <span className="font-mono text-[11px] text-slate-400">{f.id}</span>
+        <Tech><span className="font-mono text-[11px] text-slate-400">{f.id}</span></Tech>
       </div>
     </div>
+  )
+}
+
+// A proposed correction: the line by name in the simple view, by key in the expert view.
+function CorrectionLine({ line, current, proposed }: { line: string; current: unknown; proposed: unknown }) {
+  const { simple } = useView()
+  const version = useLatestVersion()
+  const { data: plain } = useQuery({ queryKey: ['labels'], queryFn: () => api<Record<string, string>>('/labels'), enabled: simple, staleTime: Infinity })
+  const name = simple ? plain?.[`line:${version}:${line}`] ?? line : line
+  return (
+    <li className={simple ? 'text-slate-600' : 'font-mono text-slate-600'}>
+      {name}: <span className="line-through">{fmtValue(current)}</span> → <b>{fmtValue(proposed)}</b>
+    </li>
   )
 }
 
@@ -137,13 +148,15 @@ const KIND: Record<string, { label: string; cls: string; title: string }> = {
   stale: { label: 'needs recompute', cls: 'border-amber-300 bg-amber-50 text-amber-800', title: 'Depends on a change but is an engine formula; showing the engine value until it reruns' },
 }
 
+const KIND_TERM: Record<string, string> = { adjusted: 'Adjusted', propagated: 'Propagated', stale: 'Needs recompute' }
+
 export function KindBadge({ kind, partial = false }: { kind: string; partial?: boolean }) {
   const k = KIND[kind]
   if (!k) return null
   return (
     <span className={`chip ${k.cls}`} title={partial ? `${k.title}. Some inputs still need a recompute.` : k.title}>
       {partial ? '≈ ' : ''}
-      {k.label}
+      <Term t={KIND_TERM[kind]}>{k.label}</Term>
     </span>
   )
 }

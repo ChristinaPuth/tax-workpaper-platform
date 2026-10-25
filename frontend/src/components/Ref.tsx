@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type NodePreview } from '../api'
 import { hrefFor, shortLabel } from '../refs'
+import { useView } from '../queries'
 
 export function Ref({ id, children, className = '' }: { id: string; children?: React.ReactNode; className?: string }) {
   const [hover, setHover] = useState(false)
@@ -15,8 +16,16 @@ export function Ref({ id, children, className = '' }: { id: string; children?: R
     staleTime: Infinity,
     retry: false,
   })
+  const { simple } = useView()
+  // the simple view names what a reference is ('Box 1a gross amount · D21'), not its id (ev-0127)
+  const { data: plain } = useQuery({
+    queryKey: ['labels'],
+    queryFn: () => api<Record<string, string>>('/labels'),
+    enabled: simple,
+    staleTime: Infinity,
+  })
   const href = hrefFor(id)
-  const body = children ?? <span className="font-mono">{shortLabel(id)}</span>
+  const body = children ?? (simple && plain?.[id] ? <span>{plain[id]}</span> : <span className="font-mono">{shortLabel(id)}</span>)
   const cls = `chip border-slate-200 bg-slate-50 text-slate-700 ${href ? 'hover:border-indigo-300 hover:text-indigo-700' : ''} ${className}`
   return (
     <span className="relative inline-block" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>

@@ -181,7 +181,7 @@ def partial_extraction(c: Ctx):
                       nodes=[f"doc:{d['id']}", f"page:{d['id']}#{pg['page']}", c.L(f"F8949.{box}.total")],
                       evidence=[f"page:{d['id']}#{pg['page']}"],
                       corrections=[Correction(f"F8949.{box}.{lot}", None, round(gain, 2), "stcg" if term == "short" else "ltcg")],
-                      deltas=[("stcg" if term == "short" else "ltcg", gain)])
+                      deltas=[("stcg" if term == "short" else "ltcg", gain, c.ca_category_for_sale(sold))])
 
 
 @check("X7-summary-vs-detail")
@@ -249,7 +249,7 @@ def same_income_two_documents(c: Ctx):
                   f"account. {parent_key} adds both.",
                   nodes=[c.L(k1), c.L(k2), parent, f"ev:{e1['id']}", f"ev:{e2['id']}"],
                   evidence=[f"page:{e1['document_id']}#{e1['page']}", f"page:{e2['document_id']}#{e2['page']}"],
-                  corrections=[Correction(k2, amt, 0, cat)], deltas=[(cat, -amt)])
+                  corrections=[Correction(k2, amt, 0, cat)], deltas=[(cat, -amt, c.p.california_category(k2))])
 
 
 @check("X9-duplicate-document")

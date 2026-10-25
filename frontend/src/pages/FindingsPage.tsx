@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api, type Finding, type Severity } from '../api'
 import { fmtEffect } from '../format'
 import { DecisionForm, Empty, FindingCard } from '../components/ui'
-import { useFindingStates } from '../queries'
+import { useFindingStates, useInbox } from '../queries'
 import { useSession } from '../session-context'
 
 const ORDER: Severity[] = ['error', 'warning', 'info']
@@ -16,8 +16,11 @@ export function FindingsPage() {
   const check = params.get('check') // e.g. P5 from an Inbox group: every finding of that check, any severity
   const id = params.get('id') // one finding, opened from the Inbox when nothing it cites has a page
   const [sev, setSev] = useState<Severity>('error')
+  const area = params.get('area') // from an area report card: that area's share of the check
+  const { data: inbox } = useInbox() // carries the area names
   const rows = id ? all.filter((f) => f.id === id)
-    : check ? all.filter((f) => f.check.split('-')[0] === check) : all.filter((f) => f.severity === sev)
+    : check ? all.filter((f) => f.check.split('-')[0] === check && (!area || f.area === area))
+      : all.filter((f) => f.severity === sev)
   const filter = id ?? check
   const { data: states } = useFindingStates()
   const { person } = useSession()
@@ -36,7 +39,7 @@ export function FindingsPage() {
         <h1 className="mr-2 font-semibold text-slate-900">Findings</h1>
         {filter && (
           <span className="chip border-slate-300 bg-slate-50 text-slate-700">
-            {id ? id : rows[0]?.check ?? check} · {rows.length}
+            {id ? id : rows[0]?.check ?? check}{!id && area ? ` · ${inbox?.areas[area] ?? area}` : ''} · {rows.length}
             <Link to="/findings" className="ml-1 text-slate-400 hover:text-slate-700" aria-label="Clear filter">
               ✕
             </Link>

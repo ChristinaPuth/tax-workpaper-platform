@@ -321,7 +321,7 @@
     }
    ],
    "federal_effect": -6647,
-   "california_effect": -649,
+   "california_effect": -1222,
    "effect_note": null,
    "generic": true,
    "related": [
@@ -353,7 +353,7 @@
     }
    ],
    "federal_effect": -6647,
-   "california_effect": -649,
+   "california_effect": -1222,
    "effect_note": null,
    "generic": true,
    "related": [
@@ -727,7 +727,7 @@
     }
    ],
    "federal_effect": -1312,
-   "california_effect": -104,
+   "california_effect": -195,
    "effect_note": null,
    "generic": false,
    "related": [

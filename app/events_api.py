@@ -150,7 +150,17 @@ async def post_event(ne: NewEvent, request: Request, x_actor: str | None = Heade
 async def post_batch(b: Batch, request: Request, x_actor: str | None = Header(None)) -> dict:
     """Bulk action: validated all-or-nothing, appended under one batch_id so one undo can reverse it."""
     person = _actor(request, x_actor)
-    rows = [_validate(request, person, ne) for ne in b.events]
+    rows, refused = [], []
+    for ne in b.events:
+        try:
+            rows.append(_validate(request, person, ne))
+        except HTTPException as e:
+            refused.append((ne.target or "", e))
+    if refused:  # nothing is appended; say which items stopped the batch, so they can be done on their own
+        names = ["the whole return" if t.startswith("ver:") else t.split(":", 2)[-1] for t, _ in refused]
+        status = max(e.status_code for _, e in refused)
+        raise HTTPException(status, f"{len(refused)} of {len(b.events)} refused ({', '.join(names[:5])}"
+                                    f"{' and more' if len(names) > 5 else ''}): {refused[0][1].detail}")
     batch_id = uuid.uuid4().hex
     numbers_change = any(r["type"] in ("adjust", "undo", "judgment", "attach") for r in rows)
     cache = None if numbers_change else {}

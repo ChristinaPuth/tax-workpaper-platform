@@ -46,14 +46,17 @@ class Finding:
         return asdict(self)
 
 
-def estimate_effect(packet, deltas: list[tuple[str, float]]) -> tuple[float, float]:
-    """deltas: (category, change in the underlying amount). Returns (federal, california) tax change.
+def estimate_effect(packet, deltas: list[tuple]) -> tuple[float, float]:
+    """deltas: (category, change in the underlying amount[, California category]). Returns (federal, california)
+    tax change.
 
     category 'payment'      : more payments -> lower balance (1:1, both returned on the federal side)
     category 'ca_payment'   : California payment, 1:1 on the California side
+    California category     : when the California effect needs a different rate - the packet README says an
+                              item fully California-source (a sale during California residency) uses ca_source_income
     """
     fed = ca = 0.0
-    for cat, amt in deltas:
+    for cat, amt, *ca_cat in deltas:
         if cat == "payment":
             fed -= amt
         elif cat == "ca_payment":
@@ -62,6 +65,8 @@ def estimate_effect(packet, deltas: list[tuple[str, float]]) -> tuple[float, flo
             continue
         else:
             rf, rc = packet.tax_effect_rate(cat)
+            if ca_cat and ca_cat[0]:
+                rc = packet.tax_effect_rate(ca_cat[0])[1]
             fed += amt * rf
             ca += amt * rc
     return round(fed), round(ca)

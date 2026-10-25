@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api, type LineDetail, type LineRow, type Source, type TraceNode } from '../api'
-import { openFindings, useFindingStates, useLines, useWorking } from '../queries'
+import { openFindings, useFindingStates, useLatestVersion, useLines, useWorking } from '../queries'
 import { ActivityPanel } from './ActivityPanel'
 import { AdjustPanel } from './AdjustPanel'
 import { fmtValue, formOf } from '../format'
 import { Ref } from './Ref'
 import { SourcePreview } from './SourcePreview'
 import { FindingCard, FlagDots, KindBadge } from './ui'
+import { Tech } from './Help'
 
 export function TracePanel({ version, lineKey }: { version: string; lineKey: string }) {
   const { data: detail } = useQuery({ queryKey: ['line', lineKey], queryFn: () => api<LineDetail>(`/lines/${lineKey}`) })
@@ -25,6 +26,7 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
   })
   const { data: lines = [] } = useLines(version)
   const { data: working } = useWorking(version)
+  const latest = useLatestVersion()
   const byKey = Object.fromEntries(lines.map((l) => [l.key, l]))
 
   if (!detail || !trace) return <div className="p-4 text-slate-400">Loading {lineKey}…</div>
@@ -42,7 +44,7 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
     <div className="space-y-4 p-4">
       <header>
         <div className="font-mono text-[11px] text-slate-400">
-          {detail.form} line {detail.line} · {lineKey}
+          {detail.form} line {detail.line}<Tech> · {lineKey}</Tech>
         </div>
         <h2 className="text-base font-semibold text-slate-900">{detail.label}</h2>
         <div className="mt-1 flex items-baseline gap-3">
@@ -76,7 +78,16 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
 
       {working && <ActivityPanel target={`line:${version}:${lineKey}`} />}
 
-      {detail.findings.length > 0 && (
+      {/* issues are found on the current version; an older version only points there, so its own numbers
+          are not shown next to issues that quote the current ones */}
+      {detail.findings.length > 0 && latest && version !== latest && (
+        <Link to={`/return?v=${latest}&form=${formOf(lineKey)}&line=${lineKey}`}
+          className="block rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] text-slate-600 hover:border-indigo-300">
+          {detail.findings.length} issue{detail.findings.length > 1 ? 's' : ''} on this line in the current version ({latest})
+          <span className="ml-1 text-indigo-700">Open in {latest} →</span>
+        </Link>
+      )}
+      {detail.findings.length > 0 && version === latest && (
         <section className="space-y-1.5">
           <div className="section-title">Issues on this line</div>
           {detail.findings.map((f) => (
@@ -88,7 +99,7 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
       <section>
         <div className="section-title mb-1">Rule</div>
         <div className="rounded-md border border-slate-200 bg-white p-2">
-          <span className="font-mono text-[11px] text-slate-500">{detail.rule}</span>
+          <Tech><span className="font-mono text-[11px] text-slate-500">{detail.rule}</span></Tech>
           {detail.rule_text && <p className="text-slate-700">{detail.rule_text}</p>}
           {detail.note && <p className="mt-1 text-slate-500">Engine note: {detail.note}</p>}
         </div>
@@ -131,7 +142,7 @@ function Feeds({ version, lines }: { version: string; lines: Downstream[] }) {
             to={`/return?v=${version}&form=${formOf(l.key)}&line=${l.key}`}
             className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-slate-50 hover:text-indigo-700"
           >
-            <span className="font-mono text-[11px] text-slate-400">{l.key}</span>
+            <Tech><span className="font-mono text-[11px] text-slate-400">{l.key}</span></Tech>
             <span className="min-w-0 flex-1 truncate">{l.label}</span>
             <span className="num w-24 text-right">{fmtValue(l.value)}</span>
           </Link>
@@ -194,7 +205,7 @@ function InputRow({ node, byKey, depth }: { node: TraceNode; byKey: Record<strin
           className="min-w-0 flex-1 truncate hover:text-indigo-700"
           title={row?.label}
         >
-          <span className="font-mono text-[11px] text-slate-400">{key}</span> {row?.label}
+          <Tech><span className="font-mono text-[11px] text-slate-400">{key}</span></Tech> {row?.label}
         </Link>
         {row && <FlagDots findings={openFindings(row, states).open} />}
         <span className="num w-24 text-right font-medium">{fmtValue(node.value)}</span>

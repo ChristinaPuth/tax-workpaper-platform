@@ -121,7 +121,10 @@ def check(person: Person, etype: str, payload: dict, *, verification_types: list
             prepared = [e for e in prior_on_target if e["actor"] == person.id and e["type"] in ("adjust", "verify")
                         and not e.get("undone")]
             if prepared:
-                raise Forbidden("a person may not review or sign off on work they prepared")
+                where = sorted({e["target"].split(":", 2)[-1] for e in prepared if e.get("target")})
+                raise Forbidden("a person may not review or sign off on work they prepared"
+                                + (f" (you worked on {', '.join(where[:3])}{' and more' if len(where) > 3 else ''})"
+                                   if where else ""))
 
     if etype in ("undo", "resolve_note", "answer"):
         if target_event is None:

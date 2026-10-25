@@ -99,6 +99,15 @@ def test_errors_carry_corrections_and_effects(ctx):
             assert f.federal_effect is not None and f.california_effect is not None, f.id
 
 
+def test_sales_while_a_california_resident_use_the_california_source_rate(ctx):
+    # README: an item fully California-source (a sale during California residency) uses ca_source_income
+    rsu = {f.title.split(":")[0]: f for f in ctx.findings if f.check.startswith("J1")}
+    assert rsu["F8949.B.N1"].california_effect == round(-19100 * 0.064)   # sold 02/18, California resident
+    assert rsu["F8949.E.N4"].california_effect == round(-9420 * 0.034)    # sold 08/12, after the move to Texas
+    errors = [f for f in ctx.findings if f.severity == "error"]
+    assert (sum(f.federal_effect for f in errors), sum(f.california_effect for f in errors)) == (-7713, -3288)
+
+
 def test_resolved_low_confidence_is_downgraded(ctx):
     f = next(f for f in ctx.findings if "ev:ev-1049" in f.nodes and f.check.startswith("X4"))
     assert f.severity == "info" and "msg:msg-08" in f.evidence

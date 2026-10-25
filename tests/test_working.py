@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 from workpaper.index import Index
 from workpaper.packet import Packet, packet_path
-from workpaper.working import build, infer_category, infer_operator
+from workpaper.working import build, estimate, infer_category, infer_operator
 
 PRIYA, DANIEL, HELEN, MARCUS, JO, SAM, NGOZI = "st-01", "st-02", "st-03", "st-04", "st-05", "st-06", "cu-01"
 
@@ -276,3 +276,13 @@ def test_a_number_is_also_searched_as_text(client):
     assert r["amount"] == 3520
     assert any("Form 3520" in f["title"] for f in r["findings"])          # text match
     assert any(e["text_as_read"] == "3,520.00" for e in r["extracted_values"])  # amount match (crypto lot C5)
+
+
+def test_fully_california_source_lines_use_the_california_source_rate():
+    # README: "for an item fully California-source (a sale during California residency, the Sacramento rental)
+    # use ca_source_income for the California effect"
+    p = Packet.load(packet_path())
+    assert estimate(p, "F8949.B.N1", -19100)["california"] == round(-19100 * 0.064, 2)   # sold 02/18, in California
+    assert estimate(p, "F8949.E.N4", -9420)["california"] == round(-9420 * 0.034, 2)    # sold 08/12, in Texas
+    assert estimate(p, "SchE.14A", -11000)["california"] == round(11000 * 0.064, 2)     # Sacramento rental
+    assert estimate(p, "SchE.14B", -1800)["california"] == round(1800 * 0.099, 2)       # Austin rental

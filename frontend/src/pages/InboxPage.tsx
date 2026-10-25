@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { InboxItem } from '../api'
 import { fmtEffect } from '../format'
 import { useInbox } from '../queries'
@@ -8,23 +8,30 @@ import { useSession } from '../session-context'
 import { Empty, SeverityChip } from '../components/ui'
 import { AnswerBox } from '../components/ActivityPanel'
 import { usePostBatch } from '../queries'
+import { useMarkVisited, useView } from '../queries'
 
 // "My work": what this person should do next, worst first, in plain language.
+const ACROSS = '__across'
+
 export function InboxPage() {
+  useMarkVisited('inbox')
   const { person } = useSession()
   const { data } = useInbox()
-  const [area, setArea] = useState<string | null>(null)
+  const [params] = useSearchParams()
+  const [area, setArea] = useState<string | null>(params.get('area'))  // a link from a report opens one area
 
+  // counted like the header (only what needs you), so the chips add up to the total; items that span areas
+  // (batches, sign-offs given together, the whole return) get a chip of their own
   const areas = useMemo(() => {
     const m = new Map<string, { label: string; n: number }>()
-    data?.sections.forEach((s) =>
+    data?.sections.filter((s) => s.needs_you).forEach((s) =>
       s.items.forEach((i) => {
-        if (!i.area) return
-        const cur = m.get(i.area) ?? { label: i.area_label ?? i.area, n: 0 }
-        m.set(i.area, { ...cur, n: cur.n + 1 })
+        const key = i.area ?? ACROSS
+        const cur = m.get(key) ?? { label: i.area ? (i.area_label ?? i.area) : 'Across areas', n: 0 }
+        m.set(key, { ...cur, n: cur.n + 1 })
       }),
     )
-    return [...m.entries()].sort((a, b) => b[1].n - a[1].n)
+    return [...m.entries()].sort((a, b) => (a[0] === ACROSS ? 1 : b[0] === ACROSS ? -1 : b[1].n - a[1].n))
   }, [data])
 
   if (!data) return <div className="p-6 text-slate-400">Loading your work…</div>
@@ -58,7 +65,7 @@ export function InboxPage() {
         {data.total === 0 && <Empty>{data.empty_message}</Empty>}
 
         {data.sections.map((s) => {
-          const items = s.items.filter((i) => !area || i.area === area || i.kind === 'group')
+          const items = s.items.filter((i) => !area || (i.area ?? ACROSS) === area)
           if (!items.length) return null
           return (
             <section key={s.key} className="mb-6">
@@ -94,6 +101,7 @@ function hrefOf(i: InboxItem): string | null {
 
 function InboxCard({ item: i }: { item: InboxItem }) {
   const [open, setOpen] = useState(false)
+  const { simple } = useView()
   const href = hrefOf(i)
   const hasEffect = !!(i.effect.federal || i.effect.california)
   const handled = i.state === 'adjusted' || i.state === 'reviewed'
@@ -117,10 +125,13 @@ function InboxCard({ item: i }: { item: InboxItem }) {
           {i.what ? (
             <p className={`mt-1 text-slate-600 ${open ? '' : 'line-clamp-2'}`}>
               {i.what}
-              {open && i.why && !handled && <span className="block pt-1 text-[12px] text-slate-400">{i.why}</span>}
+              {open && i.why && !handled && !simple && <span className="block pt-1 text-[12px] text-slate-400">{i.why}</span>}
             </p>
           ) : (
             i.why && <p className="mt-1 text-slate-600">{i.why}</p>
+          )}
+          {simple && i.what && i.why && !handled && (
+            <p className="mt-1 text-[12px] text-slate-500"><span className="font-semibold">Why it matters: </span>{i.why}</p>
           )}
           {i.what && (
             <button onClick={() => setOpen(!open)} className="text-[12px] text-slate-500 hover:text-slate-800">

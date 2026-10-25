@@ -7,6 +7,7 @@ import { shortLabel } from '../refs'
 import { useGate, useInbox } from '../queries'
 import { SearchBar } from './SearchBar'
 import { NavTrail } from './NavTrail'
+import { HelpButton } from './Help'
 
 const ROLE_LABEL: Record<string, string> = {
   preparer: 'Preparer',
@@ -26,16 +27,16 @@ export function Layout() {
   const { data: inbox } = useInbox()
   const { data: gate } = useGate()
   const nav = ({ isActive }: { isActive: boolean }) =>
-    `rounded-md px-2.5 py-1 text-[13px] font-medium ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`
+    `rounded-md px-2 py-1 text-[13px] font-medium xl:px-2.5 ${isActive ? 'bg-slate-700 text-white' : 'text-slate-300 hover:text-white'}`
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-11 shrink-0 items-center gap-4 bg-slate-900 px-4 text-white">
+      <header className="flex min-h-11 shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 bg-slate-900 xl:gap-x-4 px-4 py-1.5 text-white">
         <div className="flex items-baseline gap-2">
           <span className="font-semibold">Workpaper</span>
-          <span className="text-[12px] text-slate-400">Okafor-Lindqvist · 2025 · Married filing jointly</span>
+          <span className="hidden text-[12px] text-slate-400 2xl:inline">Okafor-Lindqvist · 2025 · Married filing jointly</span>
         </div>
-        <nav className="flex gap-1">
+        <nav className="flex flex-wrap gap-1">
           <NavLink to="/inbox" className={nav}>
             Inbox
             {inbox && inbox.total > 0 && <span className="num ml-1.5 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{inbox.total}</span>}
@@ -49,6 +50,9 @@ export function Layout() {
           <NavLink to="/findings" className={nav}>
             Findings
           </NavLink>
+          <NavLink to="/reports" className={nav}>
+            Reports
+          </NavLink>
           <NavLink to="/filing" className={nav}>
             Filing
             {gate && (
@@ -59,10 +63,11 @@ export function Layout() {
           </NavLink>
         </nav>
         <SearchBar />
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+          <HelpButton />
           <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title={`Live updates: ${live}`}>
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
-            live
+            <span className="hidden xl:inline">live</span>
           </span>
           {changes && changes.count > 0 && (
             <span className="chip border-indigo-400 bg-indigo-500/20 text-indigo-100" title="Changes by others since you last looked">
@@ -70,11 +75,11 @@ export function Layout() {
             </span>
           )}
           <label className="flex items-center gap-2 text-[12px]">
-            <span className="text-slate-400">Acting as</span>
+            <span className="hidden text-slate-400 2xl:inline">Acting as</span>
             <select
               value={actor}
               onChange={(e) => setActor(e.target.value)}
-              className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-[12px] text-white"
+              className="max-w-[12rem] rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-[12px] text-white 2xl:max-w-none"
             >
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -85,8 +90,8 @@ export function Layout() {
             </select>
           </label>
           {person && !person.sensitive_data_clearance && person.role !== 'client' && (
-            <span className="chip border-amber-400 bg-amber-500/20 text-amber-100" title={person.note ?? ''}>
-              no sensitive-data clearance
+            <span className="chip border-amber-400 bg-amber-500/20 text-amber-100" title={`No sensitive-data clearance. ${person.note ?? ''}`}>
+              no <span className="hidden xl:inline">sensitive-data&nbsp;</span>clearance
             </span>
           )}
         </div>

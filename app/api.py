@@ -17,7 +17,7 @@ def _store(request: Request):
 
 
 def _finding_dict(f) -> dict:
-    return dict(f.to_dict(), related=getattr(f, "related", []))
+    return dict(f.to_dict(), related=getattr(f, "related", []), area=getattr(f, "area", None))
 
 
 def _findings_by_node(findings) -> dict[str, dict[str, int]]:
@@ -212,6 +212,39 @@ def node_preview(node_id: str, request: Request) -> dict:
             "data": {k: v for k, v in n.data.items() if isinstance(v, (str, int, float, bool)) or v is None}}
 
 
+def _short(text: str, n: int = 40) -> str:
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def plain_label(node, packet) -> str:
+    """How a reference reads in the simple view: what it is, not its id (ev-0127 -> 'Box 1a gross amount · D21')."""
+    kind, _, rest = node.id.partition(":")
+    if kind == "line":
+        version, _, key = rest.partition(":")
+        line = packet.line(key, version)
+        return line["label"] if line else node.label
+    if kind == "ev":
+        ev = packet.ev[rest]
+        return f"{_short(ev['label'], 34)} · {ev['document_id']}"
+    if kind == "page":
+        doc, _, page = rest.partition("#")
+        return f"{doc}, page {page}"
+    if kind == "doc":
+        return f"{rest} · {_short(node.label, 30)}"
+    if kind == "ver":
+        return f"The whole return ({rest})"
+    return _short(node.label)
+
+
+@router.get("/labels")
+def labels(request: Request) -> dict[str, str]:
+    """Plain-language names for every reference, for the simple view. Built once per process."""
+    s = _store(request)
+    if not hasattr(s, "_plain_labels"):
+        s._plain_labels = {i: plain_label(n, s.packet) for i, n in s.index.nodes.items()}
+    return s._plain_labels
+
+
 # -------------------------------------------------------------------------- findings
 @router.get("/findings")
 def list_findings(request: Request, severity: str | None = None, origin: str | None = None,
@@ -304,10 +337,14 @@ def search(q: str, request: Request, limit: int = 25) -> dict:
     people += [{"id": s_["id"], "name": s_["name"], "role": s_["role"]}
                for s_ in p.firm["staff"] + p.firm.get("client_users", []) if needle in s_["name"].lower()]
     out["people"] = people[:limit]
-    text_evs = [ev_row(e) for e in p.extracted_values
-                if needle in (e["text_as_read"] or "").lower() or needle in e["label"].lower()]
-    text_findings = [_finding_dict(f) for f in s.findings
-                     if needle in f.title.lower() or needle in f.detail.lower()]
+    # a number typed as text must not match inside a longer number: 12,400 is not in 212,400 or 12,4001
+    if amount is not None:
+        whole = re.compile(r"(?<![\d.])(?<!\d,)" + re.escape(needle) + r"(?!\d|,\d)")
+        hit = lambda t: bool(whole.search((t or "").lower()))
+    else:
+        hit = lambda t: needle in (t or "").lower()
+    text_evs = [ev_row(e) for e in p.extracted_values if hit(e["text_as_read"]) or hit(e["label"])]
+    text_findings = [_finding_dict(f) for f in s.findings if hit(f.title) or hit(f.detail)]
 
     # amount matches - when the query reads as a number, exact amounts come first
     amount_lines, amount_evs, amount_findings = [], [], []
@@ -324,23 +361,4 @@ def search(q: str, request: Request, limit: int = 25) -> dict:
     out["lines"] = merge(amount_lines, text_lines, "key")
     out["extracted_values"] = merge(amount_evs, text_evs)
     out["findings"] = merge(amount_findings, text_findings)
-    return out
-
-    ranked = [(r, l) for l in p.lines[version].values() if (r := _rank(needle, l["key"], l["label"])) is not None]
-    out["lines"] = [line_row(l) for _, l in sorted(ranked, key=lambda x: x[0])][:limit]
-    docs = [(r, d) for d in p.documents
-            if (r := _rank(needle, d["id"], d["title"], d["document_type"], d.get("issuer", ""))) is not None]
-    out["documents"] = [{"id": d["id"], "title": d["title"], "document_type": d["document_type"]}
-                        for _, d in sorted(docs, key=lambda x: x[0])][:limit]
-    people = [{"id": f"person:{pid}", "name": x["name"], "role": x.get("role", "household")}
-              for pid, x in p.person.items() if needle in x["name"].lower()]
-    people += [{"id": s_["id"], "name": s_["name"], "role": s_["role"]}
-               for s_ in p.firm["staff"] + p.firm.get("client_users", []) if needle in s_["name"].lower()]
-    out["people"] = people[:limit]
-    out["extracted_values"] = [
-        {"id": e["id"], "document_id": e["document_id"], "page": e["page"], "label": e["label"],
-         "text_as_read": e["text_as_read"]} for e in p.extracted_values
-        if needle in (e["text_as_read"] or "").lower() or needle in e["label"].lower()][:limit]
-    out["findings"] = [_finding_dict(f) for f in s.findings
-                       if needle in f.title.lower() or needle in f.detail.lower()][:limit]
     return out

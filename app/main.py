@@ -16,6 +16,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -29,6 +30,8 @@ from workpaper.packet import packet_path as default_packet_path
 from .api import router
 from .db import make_engine
 from .events_api import router as events_router
+from .inbox import area_of
+from .settings_api import router as settings_router
 from .work_api import router as work_router
 from .live import Broker, install_exit_signal_hook
 from .documents import page_coverage
@@ -54,6 +57,8 @@ def load_store(packet_path: str) -> Store:
     ix = Index(p)
     ctx = run_all(p, ix)
     link_findings(ctx)
+    for f in ctx.findings:  # the area each issue belongs to, so lists and reports can filter by it
+        f.area = area_of(f.nodes, p)
     coverage = {d["id"]: page_coverage(p, d["id"]) for d in p.documents}
     return Store(packet=p, index=ix, findings=ctx.findings, verified=ctx.verified, coverage=coverage,
                  loaded_in=time.monotonic() - t0)
@@ -72,9 +77,11 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
 
     app = FastAPI(title="Okafor-Lindqvist Workpaper API", version="2b", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(GZipMiddleware, minimum_size=2000)  # line lists and label maps are large JSON
     app.include_router(router)
     app.include_router(events_router)
     app.include_router(work_router)
+    app.include_router(settings_router)
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
         app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 

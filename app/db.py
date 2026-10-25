@@ -61,6 +61,13 @@ user_state = Table(
     Column("last_seen_event_id", Integer, nullable=False, default=0),
 )
 
+# A person's own preferences (mode, glossary, quick start). Not work on the return, so not in the event log.
+user_settings = Table(
+    "user_settings", metadata,
+    Column("actor", String(16), primary_key=True),
+    Column("settings", JSON, nullable=False, default=dict),
+)
+
 
 def database_url() -> str:
     url = os.environ.get("DATABASE_URL")
@@ -136,6 +143,20 @@ def mark_seen(eng: Engine, actor: str, event_id: int) -> None:
         elif event_id > cur._mapping["last_seen_event_id"]:
             conn.execute(user_state.update().where(user_state.c.actor == actor)
                          .values(last_seen_event_id=event_id))
+
+
+def get_settings(eng: Engine, actor: str) -> dict:
+    with eng.connect() as conn:
+        r = conn.execute(select(user_settings.c.settings).where(user_settings.c.actor == actor)).first()
+    return dict(r[0]) if r else {}
+
+
+def put_settings(eng: Engine, actor: str, settings: dict) -> None:
+    with eng.begin() as conn:
+        if conn.execute(select(user_settings.c.actor).where(user_settings.c.actor == actor)).first() is None:
+            conn.execute(insert(user_settings).values(actor=actor, settings=settings))
+        else:
+            conn.execute(user_settings.update().where(user_settings.c.actor == actor).values(settings=settings))
 
 
 def put_snapshot(eng: Engine, *, kind: str, event_id: int, scope: list[str], hash: str, content: dict) -> None:
