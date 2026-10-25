@@ -159,7 +159,7 @@ def test_the_gate_starts_closed_with_derived_steps(c):
     assert s[1]["status"] == "done"                                       # D01 and D02 signed
     assert s[6]["status"] == "done"                                       # carryovers agree (no P4 findings)
     assert s[2]["status"] == "open" and s[5]["progress"]["total"] == 59
-    assert s[12]["status"] == "later"
+    assert s[12]["status"] == "open" and "After the partner signs off" in s[12]["detail"]
     assert any(b["kind"] == "errors" for b in g["blockers"])
 
 
@@ -237,3 +237,55 @@ def test_signoffs_given_together_reopen_together(c):
     c.post("/api/events/batch", headers={"X-Actor": DANIEL}, json={"events": signs})
     assert "reopened" not in inbox(c, DANIEL)
     assert all(s["valid"] for s in signoffs(c)) and len(signoffs(c)) == 3
+
+
+# ------------------------------------------------------------------ the clients' approval (Form 8879)
+ERIK = "cu-02"
+
+
+def approve(c, who, name, pin="41207", consent=True, target=RETURN):
+    return c.post("/api/events", headers={"X-Actor": who}, json={"type": "signoff", "target": target, "payload": {
+        "level": "client", "typed_name": name, "pin": pin, "consent": consent}})
+
+
+def sign_return(c):
+    assert post(c, DANIEL, "signoff", RETURN, level="reviewer").status_code == 201
+    assert post(c, HELEN, "signoff", RETURN, level="partner").status_code == 201
+
+
+def test_clients_approve_only_after_the_partner_and_with_name_pin_and_consent(c):
+    assert approve(c, NGOZI, "Ngozi Okafor").status_code == 409           # partner has not signed yet
+    sign_return(c)
+    assert approve(c, NGOZI, "Ngozi O.").status_code == 422               # not her name
+    assert approve(c, NGOZI, "Ngozi Okafor", pin="123").status_code == 422
+    assert approve(c, NGOZI, "Ngozi Okafor", consent=False).status_code == 422
+    assert approve(c, NGOZI, "Ngozi Okafor", target="line:v3:SchC.1").status_code == 422
+    assert post(c, PRIYA, "signoff", RETURN, level="client").status_code == 403   # staff never sign for the client
+    assert post(c, NGOZI, "signoff", RETURN, level="partner").status_code == 403
+    r = approve(c, NGOZI, "  ngozi   okafor ")
+    assert r.status_code == 201
+    assert "pin" not in r.json()["payload"] and r.json()["payload"]["pin_entered"] is True   # the PIN is not stored
+
+
+def test_step_12_needs_both_spouses_and_reopens_when_the_return_changes(c):
+    sign_return(c)
+    approve(c, NGOZI, "Ngozi Okafor")
+    g, s = steps(c)
+    assert s[12]["status"] == "open" and "Erik Lindqvist" in s[12]["detail"] and s[12]["progress"] == {"done": 1, "total": 2}
+    approve(c, ERIK, "Erik Lindqvist", pin="88310")
+    g, s = steps(c)
+    assert s[12]["status"] == "done"
+    post(c, PRIYA, "adjust", "line:v3:SchA.8a", new_value=19697, reason="payoff interest counted twice")
+    g, s = steps(c)
+    assert s[12]["status"] == "open" and "reopened" in s[12]["detail"]
+    mine = [x for x in signoffs(c, RETURN) if x["actor"] == NGOZI]
+    assert not mine[0]["valid"] and any("SchA.8a" in ch["node"] for ch in mine[0]["changed"])
+
+
+def test_only_the_signer_withdraws_a_client_approval(c):
+    sign_return(c)
+    ev = approve(c, NGOZI, "Ngozi Okafor").json()
+    undo = lambda who: c.post("/api/events", headers={"X-Actor": who}, json={"type": "undo", "payload": {"event_id": ev["id"]}})
+    assert undo(HELEN).status_code == 403 and undo(ERIK).status_code == 403
+    assert undo(NGOZI).status_code == 201
+    assert not [x for x in signoffs(c, RETURN) if x["actor"] == NGOZI]

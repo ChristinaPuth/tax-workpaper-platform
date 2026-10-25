@@ -26,7 +26,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [qc],
   )
 
+  const isClient = actor.startsWith('cu-')
   useEffect(() => {
+    if (isClient) { // the live stream carries the firm's internal work; clients refresh on their own actions
+      setLive('closed')
+      return
+    }
     const es = new EventSource(`/api/stream?after=${lastId.current}`)
     es.onopen = () => setLive('open')
     es.onerror = () => setLive(es.readyState === EventSource.CLOSED ? 'closed' : 'connecting')
@@ -41,7 +46,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       'signoff', 'attach', 'assign', 'undo', 'view_sensitive']
     types.forEach((t) => es.addEventListener(t, onEvent))
     return () => es.close()
-  }, [qc])
+  }, [qc, isClient])
 
   const value = useMemo(
     () => ({ actor, person: people.find((p) => p.id === actor), people, setActor, live, recent }),

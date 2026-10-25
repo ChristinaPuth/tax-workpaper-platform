@@ -95,8 +95,25 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
                                                f"on {s['at'][:10]}. Sign again after review.", [ret]))
         else:
             steps.append(_step(n, title, OPEN, f"Sign off the whole return at {level} level.", [ret]))
-    steps.append(_step(12, "Client approval and e-file authorization", LATER,
-                       "Comes with the client portal: the client approves the summary and signs Form 8879.", []))
+    # married filing jointly: every client on the engagement approves and signs (Form 8879 / FTB 8879)
+    clients = [pid for pid, p in (people or {}).items() if p.role == "client"]
+    partner_ok = any(s["target"] == ret and s["level"] == "partner" and s["valid"] for s in signoffs)
+    approvals = {s["actor"]: s for s in signoffs if s["target"] == ret and s["level"] == "client"}
+    held = [c for c in clients if approvals.get(c, {}).get("valid")]
+    waiting = [name(c) for c in clients if c not in held]
+    if clients and not waiting:
+        steps.append(_step(12, "Client approval and e-file authorization", DONE,
+                           "Approved and signed electronically (Form 8879, FTB 8879) by "
+                           + " and ".join(name(c) for c in clients) + ".", [ret]))
+    else:
+        reopened = [name(c) for c in clients if c in approvals and not approvals[c]["valid"]]
+        detail = ("After the partner signs off, the clients approve the return in their portal and sign Form 8879 "
+                  "with their PIN." if not partner_ok
+                  else "Waiting for " + " and ".join(waiting) + " to approve and sign in the portal.")
+        if reopened:
+            detail += f" Approval reopened for {' and '.join(reopened)}: the return changed after they approved."
+        steps.append(_step(12, "Client approval and e-file authorization", OPEN, detail, [ret],
+                           progress=(len(held), len(clients)) if clients else None))
 
     blockers = []
     notes = [e for e in log.of_type("review_note") if e["payload"].get("blocking") and e["id"] not in log.resolved_notes]
@@ -114,7 +131,7 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
         if effect > PARTNER_THRESHOLD and not log.signed_after(target, a.event_id, ("partner",), a.actor):
             blockers.append({"kind": "partner", "title": f"{a.key} change over {PARTNER_THRESHOLD:,} needs a partner",
                              "target": target})
-    reopened = [s for s in signoffs if not s["valid"] and s["target"] != ret]
+    reopened = [s for s in signoffs if not s["valid"] and s["target"] != ret and s["level"] != "client"]
     if len(reopened) == 1:
         blockers.append({"kind": "reopened", "title": f"Sign-off on {reopened[0]['target'].split(':', 2)[-1]} reopened",
                          "target": reopened[0]["target"]})
@@ -122,8 +139,12 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
         blockers.append({"kind": "reopened", "title": f"{len(reopened)} sign-offs reopened - sign again after review",
                          "target": None, "count": len(reopened)})
 
+    undone = {e["payload"].get("event_id") for e in events if e["type"] == "undo"}
+    filed = next((e for e in events if e["type"] == "file" and e["id"] not in undone), None)
     required = [s for s in steps if s["status"] != LATER]
     ready = all(s["status"] == DONE for s in required) and not blockers
     return {"ready": ready, "steps": steps, "blockers": blockers,
+            "filed": {"at": filed["at"], "by": filed["actor"], "by_name": name(filed["actor"]), "event_id": filed["id"]}
+            if filed else None,
             "summary": {"steps_done": sum(1 for s in steps if s["status"] == DONE), "steps_total": len(steps),
                         "blockers": len(blockers)}}

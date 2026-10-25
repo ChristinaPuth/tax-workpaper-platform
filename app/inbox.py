@@ -360,6 +360,23 @@ def _decision_items(findings: list[Finding], log: LogView, packet, people: dict,
     return grouped
 
 
+def _approval_items(person: Person, signoffs: list[dict], version: str) -> list[dict]:
+    """For a client: the return is ready to approve once the partner has signed it; again if it changed since."""
+    ret = f"ver:{version}"
+    if not any(s["target"] == ret and s["level"] == "partner" and s["valid"] for s in signoffs):
+        return []
+    mine = [s for s in signoffs if s["target"] == ret and s["actor"] == person.id and s["level"] == "client"]
+    if mine and mine[-1]["valid"]:
+        return []
+    again = bool(mine)
+    return [_item(id="approval", kind="approval", severity="warning",
+                  title="Your return changed after you approved it" if again else "Your return is ready for your approval",
+                  what=None, why=("Something on the return changed after you signed, so your approval no longer holds."
+                                  if again else "We cannot file until you and your spouse approve it."),
+                  todo="Review the summary, then approve and sign with your PIN.", proposal=None, area=None,
+                  target=ret, state="open")]
+
+
 def _reopened_items(person: Person, signoffs: list[dict], packet, version: str) -> list[dict]:
     """This person's sign-offs that no longer hold. Sign-offs given together (one batch) that reopened
     together come back as one item, to be signed again together."""
@@ -414,6 +431,7 @@ def build_inbox(person: Person, *, packet, findings: list[Finding], events: list
 
     role = person.role
     if role == "client":
+        section("approval", "Your approval", _approval_items(person, signoffs, version))
         section("questions", "Questions for you", _question_items(person, log, packet, people))
     elif role == "firm_administrator":
         pass

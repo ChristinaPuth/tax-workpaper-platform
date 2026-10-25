@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type Adjustment, type WorkEvent, type WorkingLine } from '../api'
 import { fmtEffect, fmtTime, fmtValue } from '../format'
 import { useSession } from '../session-context'
-import { LOG_DERIVED } from '../queries'
+import { LOG_DERIVED, useGate } from '../queries'
 import { KindBadge } from './ui'
 
 const STALE_NOTE =
@@ -35,6 +35,8 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
   const refresh = () => {
     LOG_DERIVED.forEach((key) => qc.invalidateQueries({ queryKey: [key] }))
   }
+  const { data: gate } = useGate()
+  const layer = gate?.filed ? 'amendment' : 'return' // the filed return is frozen; changes amend it
   const post = useMutation({
     mutationFn: (body: object) => api<WorkEvent>('/events', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
@@ -100,7 +102,7 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
                       {canUndo(e.actor) && (
                         <button
                           className="ml-auto text-indigo-700 hover:underline"
-                          onClick={() => post.mutate({ type: 'undo', payload: { event_id: e.id } })}
+                          onClick={() => post.mutate({ type: 'undo', payload: { event_id: e.id }, layer })}
                         >
                           Undo
                         </button>
@@ -118,17 +120,17 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
         <div>
           {!open ? (
             <button className="btn" onClick={() => setOpen(true)}>
-              Adjust this number
+              {gate?.filed ? 'Amend this number (1040-X)' : 'Adjust this number'}
             </button>
           ) : (
             <form
               className="space-y-2 rounded-md border border-indigo-200 bg-white p-2.5"
               onSubmit={(e) => {
                 e.preventDefault()
-                if (valid) post.mutate({ type: 'adjust', target, payload: { new_value: parsed, reason: reason.trim() } })
+                if (valid) post.mutate({ type: 'adjust', target, payload: { new_value: parsed, reason: reason.trim() }, layer })
               }}
             >
-              <div className="section-title">Adjust {lineKey}</div>
+              <div className="section-title">{gate?.filed ? 'Amend' : 'Adjust'} {lineKey}</div>
               {proposals.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {proposals.map((p) => (

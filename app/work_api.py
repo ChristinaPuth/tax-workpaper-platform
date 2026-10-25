@@ -5,7 +5,7 @@ stored, so they can never drift from the log.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 
 from workpaper.working import build
 
@@ -14,8 +14,11 @@ from .events_api import _actor
 from .gate import build_gate
 from .inbox import AREAS, build_inbox, finding_states
 from .logview import LogView
+from .area_reports import REPORTS, build_area_report
+from .replay import key_dates, state_at
 from .reports import areas, reconciliations, summary_vs_prior
 from .signoff import statuses
+from .versions import compare, states, what_ifs
 
 router = APIRouter(prefix="/api")
 
@@ -26,10 +29,11 @@ def working_return(request: Request, version: str | None = None):
 
 
 @router.get("/working")
-def working(request: Request, version: str | None = None) -> dict:
+def working(request: Request, version: str | None = None, amended: bool = False) -> dict:
     """Engine values with people's adjustments applied: what changed, how (adjusted / propagated / stale),
     the estimated tax effect, and warnings where the estimate stops being trustworthy."""
-    return working_return(request, version).to_dict()
+    s = request.app.state
+    return build(s.store.packet, s.store.index, db.read_events(s.db), version, amended=amended).to_dict()
 
 
 @router.get("/inbox")
@@ -101,3 +105,52 @@ def report_reconciliations(request: Request) -> list[dict]:
     s = request.app.state
     return reconciliations(s.store.packet, s.store.verified, s.store.findings, LogView(db.read_events(s.db)),
                            s.store.packet.latest["version"])
+
+
+# ------------------------------------------------------------------------- versions and what-ifs
+@router.get("/compare")
+def compare_states(request: Request, a: str = "v2", b: str = "v3") -> dict:
+    """Line-by-line difference between two states: v1, v2, v3 or 'working' (latest + adjustments)."""
+    s = request.app.state
+    events = db.read_events(s.db)
+    working = build(s.store.packet, s.store.index, events)
+    amended = build(s.store.packet, s.store.index, events, amended=True)
+    try:
+        out = compare(s.store.packet, working, a, b, amended)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    out["states"] = states(s.store.packet)
+    return out
+
+
+@router.get("/what-if")
+def what_if(request: Request) -> dict:
+    """The engine's what-if alternatives and any election recorded against them."""
+    s = request.app.state
+    return what_ifs(s.store.packet, LogView(db.read_events(s.db)), s.store.findings)
+
+
+@router.get("/reports/area/{name}")
+def area_report(name: str, request: Request) -> dict:
+    """An area report: rentals, deductions, k1 or state."""
+    s = request.app.state
+    events = db.read_events(s.db)
+    working = build(s.store.packet, s.store.index, events)
+    try:
+        return build_area_report(name, s.store.packet, working, s.store.findings, LogView(events))
+    except KeyError:
+        raise HTTPException(404, f"no area report {name!r}; use one of {sorted(REPORTS)}")
+
+
+@router.get("/replay")
+def replay(request: Request, at: str | None = None) -> dict:
+    """The file as it stood on a date (YYYY-MM-DD), from the packet's record of the season; plus the key dates."""
+    s = request.app.state
+    p = s.store.packet
+    dates = key_dates(p)
+    try:
+        out = state_at(p, s.store.findings, at or dates[0]["date"])
+    except ValueError:
+        raise HTTPException(422, "at is a date: YYYY-MM-DD")
+    out["key_dates"] = dates
+    return out

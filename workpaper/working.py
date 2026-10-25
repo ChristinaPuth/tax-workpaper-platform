@@ -190,20 +190,22 @@ class WorkingReturn:
                 "summary": self.summary, "warnings": self.warnings}
 
 
-def active_adjustments(events: list[dict]) -> list[dict]:
-    """Adjust events not undone, latest per target winning."""
+def active_adjustments(events: list[dict], layers: tuple[str, ...] = ("return",)) -> list[dict]:
+    """Adjust events not undone, latest per target winning. After filing the return layer is frozen and
+    changes go to the amendment layer; the amended return is both layers together."""
     undone = {e["payload"].get("event_id") for e in events if e["type"] == "undo"}
     latest: dict[str, dict] = {}
     for e in events:
-        if e["type"] == "adjust" and e["id"] not in undone and e.get("target"):
+        if (e["type"] == "adjust" and e["id"] not in undone and e.get("target")
+                and e.get("layer", "return") in layers):
             latest[e["target"]] = e
     return sorted(latest.values(), key=lambda e: e["id"])
 
 
-def build(p: Packet, index, events: list[dict], version: str | None = None) -> WorkingReturn:
+def build(p: Packet, index, events: list[dict], version: str | None = None, amended: bool = False) -> WorkingReturn:
     version = version or p.latest["version"]
     lines = p.lines[version]
-    adj = active_adjustments(events)
+    adj = active_adjustments(events, ("return", "amendment") if amended else ("return",))
 
     overrides: dict[str, Adjustment] = {}
     touched_sources: set[str] = set()  # lines citing an adjusted extracted value

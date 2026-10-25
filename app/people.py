@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from workpaper.packet import Packet
 
 LEVELS = ["preparer", "reviewer", "partner"]  # starter_standards.review_levels, lowest first
+CLIENT_LEVEL = "client"  # the taxpayers' approval of the whole return (Form 8879 / FTB 8879)
 
 EVENT_TYPES = {
     "note",            # free comment on any node
@@ -25,10 +26,11 @@ EVENT_TYPES = {
     "verify",          # payload.method in starter_standards.verification_types, payload.evidence[]
     "adjust",          # payload.new_value, payload.reason; original stays in the packet
     "judgment",        # payload.kind (judgment|election|due_diligence|penalty), decision, authority
-    "signoff",         # payload.level in LEVELS
+    "signoff",         # payload.level in LEVELS, or "client" for the taxpayers' approval and e-signature
     "attach",          # payload.attachment_id or payload.ref (msg-07, call-01 ...)
     "assign",          # payload.to, payload.due
     "undo",            # payload.event_id - appends the reversal, never deletes
+    "file",            # the partner files the whole return: it is frozen, later changes go to the amendment
     "view_sensitive",  # written by the server when a cleared user unmasks a field
 }
 
@@ -40,10 +42,10 @@ _STAFF_WORK = {"note", "question", "answer", "verify", "adjust", "judgment", "si
 ALLOWED: dict[str, set[str]] = {
     "preparer": _STAFF_WORK,
     "reviewer": _STAFF_WORK | {"review_note", "resolve_note", "assign"},
-    "partner": _STAFF_WORK | {"review_note", "resolve_note", "assign"},
+    "partner": _STAFF_WORK | {"review_note", "resolve_note", "assign", "file"},
     "quality_reviewer": {"note", "review_note", "resolve_note", "attach"},
     "firm_administrator": {"note", "assign"},
-    "client": {"answer", "attach"},
+    "client": {"answer", "attach", "signoff", "undo"},  # undo: withdraw their own answer or approval
 }
 
 
@@ -113,7 +115,9 @@ def check(person: Person, etype: str, payload: dict, *, verification_types: list
 
     if etype == "signoff":
         level = payload.get("level")
-        if level not in LEVELS:
+        if (person.role == "client") != (level == CLIENT_LEVEL):
+            raise Forbidden("only the taxpayers approve at client level, and they approve at no other level")
+        if level not in LEVELS and level != CLIENT_LEVEL:
             raise Invalid(f"level must be one of {LEVELS}")
         if person.role in LEVELS and LEVELS.index(level) > LEVELS.index(person.role):
             raise Forbidden(f"{person.role} cannot sign off at {level} level")
@@ -136,6 +140,9 @@ def check(person: Person, etype: str, payload: dict, *, verification_types: list
                 raise Invalid("already undone")
             if target_event["actor"] != person.id and person.role not in ("reviewer", "partner"):
                 raise Forbidden("only the author, a reviewer or a partner can undo an event")
+            client_signature = target_event["type"] == "signoff" and target_event["payload"].get("level") == CLIENT_LEVEL
+            if client_signature and target_event["actor"] != person.id:
+                raise Forbidden("only the taxpayer who signed can withdraw their approval")
         if etype == "resolve_note" and target_event["type"] != "review_note":
             raise Invalid("resolve_note must reference a review_note")
         if etype == "answer" and target_event["type"] != "question":

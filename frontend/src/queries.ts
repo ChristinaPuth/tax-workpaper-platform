@@ -19,9 +19,11 @@ export function useLines(version: string) {
 // People's adjustments only apply to the current version; older engine versions are read-only history.
 export function useWorking(version: string | undefined) {
   const latest = useLatestVersion()
+  const { data: gate } = useGate()
+  const amended = !!gate?.filed // once filed, the working return is the filed one plus the amendment
   return useQuery({
-    queryKey: ['working', version],
-    queryFn: () => api<WorkingReturn>(`/working?version=${version}`),
+    queryKey: ['working', version, amended],
+    queryFn: () => api<WorkingReturn>(`/working?version=${version}${amended ? '&amended=true' : ''}`),
     enabled: !!version && version === latest,
   })
 }
@@ -70,6 +72,7 @@ export interface NewEvent {
   type: string
   target?: string | null
   payload: Record<string, unknown>
+  layer?: 'return' | 'amendment'
 }
 
 export function usePostEvent() {

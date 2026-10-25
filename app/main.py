@@ -31,6 +31,8 @@ from .api import router
 from .db import make_engine
 from .events_api import router as events_router
 from .inbox import area_of
+from .sensitive import Sensitive, SensitiveDataMiddleware
+from .sensitive import router as sensitive_router
 from .settings_api import router as settings_router
 from .work_api import router as work_router
 from .live import Broker, install_exit_signal_hook
@@ -69,6 +71,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     async def lifespan(app: FastAPI):
         app.state.store = load_store(packet_path or str(default_packet_path()))
         app.state.people = directory(app.state.store.packet)
+        app.state.sensitive = Sensitive(app.state.store.packet)
         app.state.db = make_engine(database_url)
         app.state.broker = Broker()
         install_exit_signal_hook()  # open live streams end on shutdown instead of holding it up
@@ -76,12 +79,14 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
         app.state.db.dispose()
 
     app = FastAPI(title="Okafor-Lindqvist Workpaper API", version="2b", lifespan=lifespan)
+    app.add_middleware(SensitiveDataMiddleware)  # innermost: masks before compression
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     app.add_middleware(GZipMiddleware, minimum_size=2000)  # line lists and label maps are large JSON
     app.include_router(router)
     app.include_router(events_router)
     app.include_router(work_router)
     app.include_router(settings_router)
+    app.include_router(sensitive_router)
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
         app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 

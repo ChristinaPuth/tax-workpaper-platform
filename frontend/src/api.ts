@@ -113,6 +113,7 @@ export interface DocumentRow {
   document_type: string
   received_at: string
   page_count: number
+  uploaded_by: string | null
   extraction_status: string
   landing_status: string
   values: number
@@ -303,7 +304,7 @@ export interface FindingState {
 export interface SignoffStatus {
   event_id: number
   target: string
-  level: 'preparer' | 'reviewer' | 'partner'
+  level: 'preparer' | 'reviewer' | 'partner' | 'client'
   actor: string
   at: string
   valid: boolean
@@ -327,6 +328,7 @@ export interface Gate {
   steps: GateStep[]
   blockers: { kind: string; title: string; target: string | null; count?: number }[]
   summary: { steps_done: number; steps_total: number; blockers: number }
+  filed: { at: string; by: string; by_name: string; event_id: number } | null
 }
 
 export const VERIFICATION_TYPES = [
@@ -408,3 +410,41 @@ export interface MySettings {
   as_of: string
 }
 export type QuickStartPage = 'inbox' | 'trace' | 'search' | 'filing' | 'reports'
+
+// ---- versions and what-ifs
+export interface SummaryDelta {
+  jurisdiction: 'federal' | 'california'
+  key: string
+  label: string
+  old: number | null
+  new: number | null
+  delta: number | null
+  estimated?: boolean
+}
+
+export interface Comparison {
+  from: string
+  to: string
+  states: { id: string; label: string; trigger: string }[]
+  trigger: string | null
+  computed_at: string | null
+  documents: { added: string[]; removed: string[]; superseded: string[] }
+  summary: SummaryDelta[]
+  lines: { key: string; label: string; form: string; change: 'changed' | 'added' | 'removed' | 'needs recompute'; old: unknown; new: unknown; delta: number | null; kind: string | null }[]
+  counts: Record<string, number>
+  adjustments: { key: string; engine: number; new: number; reason: string; actor: string }[]
+}
+
+export interface WhatIf {
+  id: string
+  description: string
+  base_version: string
+  choices: Record<string, string>
+  federal: number
+  california: number
+  penalty: number
+  summary: SummaryDelta[]
+  lines: { key: string; label: string; change: string; old: unknown; new: unknown; exists: boolean }[]
+  election: { event_id: number; actor: string; at: string; decision: string; authority: string } | null
+  findings: string[]
+}

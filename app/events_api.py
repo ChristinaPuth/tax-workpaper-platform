@@ -17,7 +17,7 @@ from workpaper.working import build
 from . import db
 from .live import stream
 from .logview import LogView
-from .people import Forbidden, Invalid, Person, check
+from .people import CLIENT_LEVEL, Forbidden, Invalid, Person, check
 from .signoff import scope_of, take
 
 router = APIRouter(prefix="/api")
@@ -30,6 +30,50 @@ class NewEvent(BaseModel):
     type: str
     target: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
+    layer: str = "return"  # "amendment" once the return is filed
+
+
+# After filing these change what was filed, so they go to the amendment layer instead
+FROZEN_TYPES = {"adjust", "judgment", "signoff", "verify", "attach", "undo"}
+AMENDMENT_TYPES = {"adjust", "note", "undo"}  # review of the amendment is not built yet
+
+
+def filing_event(eng) -> dict | None:
+    """The live 'file' event, if the return has been filed."""
+    undone = _undone_ids(eng)
+    return next((e for e in db.read_events(eng, types=["file"]) if e["id"] not in undone), None)
+
+
+def _check_layer(request: Request, person: Person, ne: NewEvent, target: str | None, ref: dict | None) -> None:
+    """The filing freeze: the return layer takes no changes once filed; the amendment layer only after."""
+    s = request.app.state
+    filed = filing_event(s.db)
+    if ne.layer not in ("return", "amendment"):
+        raise HTTPException(422, "layer is 'return' or 'amendment'")
+    if ne.type == "file":
+        if filed:
+            raise HTTPException(409, f"already filed on {filed['at'][:10]}")
+        if ne.layer != "return" or target != f"ver:{s.store.packet.latest['version']}":
+            raise HTTPException(422, f"file the whole return (ver:{s.store.packet.latest['version']})")
+        from .work_api import gate  # here, not at import time: work_api imports this module
+        g = gate(request)
+        if not g["ready"]:
+            raise HTTPException(409, f"not ready to file: {g['summary']['steps_done']} of {g['summary']['steps_total']} "
+                                     f"steps done, {g['summary']['blockers']} blocker(s)")
+        return
+    if ne.type == "undo" and ref is not None and ref["type"] == "file":
+        raise HTTPException(409, "a filed return cannot be unfiled; amend it instead")
+    if ne.layer == "amendment":
+        if not filed:
+            raise HTTPException(409, "there is nothing to amend until the return is filed")
+        if ne.type not in AMENDMENT_TYPES:
+            raise HTTPException(422, f"the amendment takes {sorted(AMENDMENT_TYPES)}")
+        if ne.type == "undo" and ref is not None and ref.get("layer", "return") != "amendment":
+            raise HTTPException(409, "only amendment changes can be undone after filing")
+        return
+    if filed and ne.type in FROZEN_TYPES:
+        raise HTTPException(409, f"the return was filed on {filed['at'][:10]} and is frozen - "
+                                 "make this change on the amendment")
 
 
 class Batch(BaseModel):
@@ -85,6 +129,8 @@ def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
     if ne.type == "judgment" and ne.payload.get("finding_id"):
         if not any(f.id == ne.payload["finding_id"] for f in s.store.findings):
             raise HTTPException(422, f"no finding {ne.payload['finding_id']!r}")
+    if ne.type == "signoff" and ne.payload.get("level") == CLIENT_LEVEL and person.role == "client":
+        ne.payload = _client_approval(request, person, target, ne.payload)
     undone = _undone_ids(eng)
     if ne.type == "signoff":
         # no self-review across everything the sign-off covers, not just the node itself
@@ -100,7 +146,30 @@ def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
         raise HTTPException(403, str(e))
     except Invalid as e:
         raise HTTPException(422, str(e))
-    return {"actor": person.id, "role": person.role, "type": ne.type, "target": target, "payload": ne.payload}
+    _check_layer(request, person, ne, target, ref)
+    return {"actor": person.id, "role": person.role, "type": ne.type, "target": target, "payload": ne.payload,
+            "layer": ne.layer}
+
+
+def _client_approval(request: Request, person: Person, target: str, payload: dict) -> dict:
+    """The taxpayers' approval and e-signature (Form 8879 / FTB 8879) of the whole return the partner signed.
+    The PIN is the signature: checked for form, never stored."""
+    s = request.app.state
+    latest = s.store.packet.latest["version"]
+    if target != f"ver:{latest}":
+        raise HTTPException(422, f"the client approves the whole return (ver:{latest})")
+    from .work_api import signoff_statuses  # here, not at import time: work_api imports this module
+    if not any(x["target"] == target and x["level"] == "partner" and x["valid"] for x in signoff_statuses(request)):
+        raise HTTPException(409, "the return is not ready for your approval yet - the partner signs it off first")
+    if not payload.get("consent"):
+        raise HTTPException(422, "tick the box to confirm you have reviewed the return and authorize e-filing")
+    if " ".join(str(payload.get("typed_name", "")).split()).lower() != person.name.lower():
+        raise HTTPException(422, f"type your full name as it appears on the return ({person.name})")
+    pin = str(payload.get("pin", ""))
+    if not (len(pin) == 5 and pin.isdigit() and pin != "00000"):
+        raise HTTPException(422, "your signature PIN is any five digits except 00000")
+    return {"level": CLIENT_LEVEL, "forms": ["8879", "FTB 8879"], "typed_name": person.name, "consent": True,
+            "pin_entered": True}
 
 
 # ------------------------------------------------------------------------- people
@@ -123,7 +192,7 @@ def _append(request: Request, row: dict, batch_id: str | None = None, cache: dic
     cache: shared across a batch - sign-offs do not change any number, so one working return serves all."""
     s = request.app.state
     snapshot = None
-    if row["type"] == "signoff":
+    if row["type"] in ("signoff", "file"):  # what was signed, or filed, is kept to compare against later
         cache = cache if cache is not None else {}
         if "working" not in cache:
             events = db.read_events(s.db)
@@ -134,7 +203,7 @@ def _append(request: Request, row: dict, batch_id: str | None = None, cache: dic
         snapshot = (scope, content, digest)
     ev = db.event_dict(db.append_event(s.db, batch_id=batch_id, **row))
     if snapshot:
-        db.put_snapshot(s.db, kind="signoff", event_id=ev["id"], scope=snapshot[0], hash=snapshot[2],
+        db.put_snapshot(s.db, kind="filing" if row["type"] == "file" else "signoff", event_id=ev["id"], scope=snapshot[0], hash=snapshot[2],
                         content=snapshot[1])
     s.broker.publish(ev)
     return ev

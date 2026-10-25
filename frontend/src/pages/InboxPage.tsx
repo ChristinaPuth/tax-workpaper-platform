@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { InboxItem } from '../api'
 import { fmtEffect } from '../format'
 import { useInbox } from '../queries'
@@ -34,6 +34,7 @@ export function InboxPage() {
     return [...m.entries()].sort((a, b) => (a[0] === ACROSS ? 1 : b[0] === ACROSS ? -1 : b[1].n - a[1].n))
   }, [data])
 
+  if (person?.role === 'client') return <Navigate to="/portal" replace /> // clients have their own view
   if (!data) return <div className="p-6 text-slate-400">Loading your work…</div>
   const firstName = person?.name.split(' ')[0] ?? ''
 

@@ -140,7 +140,7 @@ def list_documents(request: Request) -> list[dict]:
     for d in p.documents:
         landing = ix.document_landing(d["id"])
         out.append({"id": d["id"], "title": d["title"], "document_type": d["document_type"],
-                     "received_at": d["received_at"], "page_count": d["page_count"],
+                     "received_at": d["received_at"], "page_count": d["page_count"], "uploaded_by": d.get("uploaded_by"),
                      "extraction_status": d["extraction"]["status"], "landing_status": landing["status"],
                      "values": landing["values"], "values_landed": landing["values_landed"],
                      "coverage": s.coverage.get(d["id"])})

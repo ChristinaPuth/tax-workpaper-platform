@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { api, type ValueLayers as VL } from '../api'
 import { fmtValue, formOf } from '../format'
 import { FindingCard } from './ui'
+import { isMasked, RevealButton, useReveal } from './Reveal'
 
 function numeric(v: unknown): number | null {
   return typeof v === 'number' ? v : null
@@ -12,7 +13,10 @@ function numeric(v: unknown): number | null {
 
 export function ValueLayers({ evId }: { evId: string }) {
   const { data: v } = useQuery({ queryKey: ['value', evId], queryFn: () => api<VL>(`/values/${evId}`) })
+  const shown = useReveal(`ev:${evId}`)
   if (!v) return <div className="h-24 animate-pulse rounded-md bg-slate-100" />
+  const masked = isMasked(v.extracted.text_as_read) || isMasked(v.printed.text)
+  const unmasked = shown.content ? String(shown.content.text_as_read ?? '') : null
 
   const printedOk = v.printed.found
   const lowConf = v.extracted.confidence < 0.8
@@ -29,13 +33,13 @@ export function ValueLayers({ evId }: { evId: string }) {
       <div className="grid grid-cols-3 gap-1.5 text-[12px]">
         <Layer title="On the page" bad={!printedOk}>
           {printedOk ? (
-            <span className="font-mono">{v.printed.text}</span>
+            <span className="font-mono">{unmasked && isMasked(v.printed.text) ? unmasked : v.printed.text}</span>
           ) : (
             <span className="text-red-700">Not printed on this page</span>
           )}
         </Layer>
         <Layer title="Pipeline read" bad={!printedOk || lowConf}>
-          <span className="font-mono">{v.extracted.text_as_read || '(blank)'}</span>
+          <span className="font-mono">{unmasked ?? (v.extracted.text_as_read || '(blank)')}</span>
           <span className={`block text-[11px] ${lowConf ? 'text-red-700' : 'text-slate-400'}`}>
             confidence {v.extracted.confidence}
           </span>
@@ -62,6 +66,7 @@ export function ValueLayers({ evId }: { evId: string }) {
           )}
         </Layer>
       </div>
+      {masked && <RevealButton r={shown} />}
       {v.printed.context && (
         <p className="rounded bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-500">…{v.printed.context}…</p>
       )}

@@ -1,11 +1,15 @@
 // Can this return be filed? The firm's twelve required steps, derived from the work, plus everything else
 // that blocks filing - each with what is left and where to go. Nothing here is ticked by hand.
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { GateStep } from '../api'
 import { ActivityPanel } from '../components/ActivityPanel'
 import { Ref } from '../components/Ref'
-import { useGate, useLatestVersion } from '../queries'
+import { useGate, useLatestVersion, usePostEvent } from '../queries'
+import { useSession } from '../session-context'
+import { fmtTime } from '../format'
 import { hrefFor } from '../refs'
+import { Replay } from './Replay'
 import { useMarkVisited } from '../queries'
 
 const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: string }> = {
@@ -16,13 +20,45 @@ const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: str
 
 export function FilingPage() {
   useMarkVisited('filing')
+  const [params, setParams] = useSearchParams()
+  const replay = params.get('tab') === 'replay'
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-4xl space-y-4 p-6">
+        <div className="flex gap-1 border-b border-slate-200">
+          {([['steps', 'Can we file?'], ['replay', 'Season replay']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setParams(k === 'steps' ? {} : { tab: 'replay' })}
+              className={`-mb-px border-b-2 px-3 py-1.5 text-[13px] font-medium ${(k === 'replay') === replay ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {replay ? <Replay /> : <Steps />}
+      </div>
+    </div>
+  )
+}
+
+function Steps() {
   const { data: gate } = useGate()
   const version = useLatestVersion()
   if (!gate) return <div className="p-6 text-slate-400">Checking whether the return can be filed…</div>
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl space-y-5 p-6">
+    <div className="space-y-5">
+      <div className="contents">
+        {gate.filed && (
+          <div className="rounded-lg border border-indigo-300 bg-indigo-50 p-4">
+            <h1 className="text-lg font-semibold text-slate-900">Filed on {fmtTime(gate.filed.at)} by {gate.filed.by_name}</h1>
+            <p className="text-slate-700">
+              The return as filed is frozen: what was filed is kept exactly. Any change from here goes on the amendment
+              (Form 1040-X) and is listed against the filed return.
+            </p>
+            <Link to="/reports?tab=versions&a=working&b=amended" className="text-[13px] text-indigo-700 hover:underline">
+              Compare as filed vs amended →
+            </Link>
+          </div>
+        )}
         <header className={`rounded-lg border p-4 ${gate.ready ? 'border-emerald-300 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
           <h1 className="text-lg font-semibold text-slate-900">
             {gate.ready ? 'Ready to file' : 'Not ready to file yet'}
@@ -32,6 +68,7 @@ export function FilingPage() {
             {gate.summary.blockers ? ` · ${gate.summary.blockers} blocker${gate.summary.blockers > 1 ? 's' : ''}` : ''}.
             {' '}Every step is worked out from the file and the work done on it.
           </p>
+          {gate.ready && !gate.filed && <FileButton target={`ver:${version}`} />}
         </header>
 
         {gate.blockers.length > 0 && (
@@ -95,6 +132,29 @@ export function FilingPage() {
           </section>
         )}
       </div>
+    </div>
+  )
+}
+
+// Filing is the partner's: once filed the return is frozen, so it asks before it does it.
+function FileButton({ target }: { target: string }) {
+  const { person } = useSession()
+  const post = usePostEvent()
+  const [sure, setSure] = useState(false)
+  if (!person?.can.includes('file')) return <p className="mt-2 text-[13px] text-slate-600">The partner files the return.</p>
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {!sure ? (
+        <button className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700" onClick={() => setSure(true)}>File the return</button>
+      ) : (
+        <>
+          <span className="text-[13px] text-slate-700">File now? The return will be frozen; later changes go on an amendment.</span>
+          <button className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700" disabled={post.isPending}
+            onClick={() => post.mutate({ type: 'file', target, payload: { jurisdictions: ['federal', 'california'] } })}>Yes, file</button>
+          <button className="btn" onClick={() => setSure(false)}>Cancel</button>
+        </>
+      )}
+      {post.error && <span className="text-[12px] text-red-700">{(post.error as Error).message}</span>}
     </div>
   )
 }

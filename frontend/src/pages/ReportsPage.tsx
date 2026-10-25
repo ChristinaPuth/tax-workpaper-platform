@@ -8,11 +8,16 @@ import { fmtDate, fmtEffect, fmtValue, formOf } from '../format'
 import { useReport } from '../queries'
 import { Tech, Term } from '../components/Help'
 import { useMarkVisited } from '../queries'
+import { Versions, WhatIfs } from './VersionsWhatIf'
+import { AreaReports, AREA_REPORT_FOR } from './AreaReport'
 
 const TABS = [
   ['summary', 'Summary vs 2024'],
   ['areas', 'Areas'],
   ['reconciliations', 'Reconciliations'],
+  ['area', 'Area reports'],
+  ['versions', 'Versions'],
+  ['whatif', 'What-if'],
 ] as const
 type Tab = (typeof TABS)[number][0]
 
@@ -34,6 +39,9 @@ export function ReportsPage() {
         {tab === 'summary' && <Summary />}
         {tab === 'areas' && <Areas />}
         {tab === 'reconciliations' && <Reconciliations />}
+        {tab === 'area' && <AreaReports />}
+        {tab === 'versions' && <Versions />}
+        {tab === 'whatif' && <WhatIfs />}
       </div>
     </div>
   )
@@ -185,6 +193,9 @@ function Area({ a }: { a: AreaCard }) {
         </ul>
       )}
       <div className="flex flex-wrap gap-x-3 text-[12px]">
+        {AREA_REPORT_FOR[a.key] && (
+          <Link to={`/reports?tab=area&r=${AREA_REPORT_FOR[a.key]}`} className="text-indigo-700 hover:underline">Detailed report →</Link>
+        )}
         {a.inbox_open > 0 && (
           <Link to={`/inbox?area=${a.key}`} className="text-indigo-700 hover:underline">Open in Inbox →</Link>
         )}

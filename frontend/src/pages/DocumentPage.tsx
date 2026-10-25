@@ -6,6 +6,8 @@ import { fmtDate, fmtValue, formOf } from '../format'
 import { PageText } from '../components/PageText'
 import { ValueLayers } from '../components/ValueLayers'
 import { ActivityPanel } from '../components/ActivityPanel'
+import { isMasked, RevealButton, useReveal } from '../components/Reveal'
+import { useSession } from '../session-context'
 import { FindingCard, StatusChip } from '../components/ui'
 import { Splitter } from '../components/Splitter'
 import { useColumnWidth } from '../useColumnWidth'
@@ -23,6 +25,8 @@ export function DocumentPage() {
     queryFn: () => api<PageView>(`/documents/${id}/pages/${page}`),
     enabled: !!doc,
   })
+  const shownPage = useReveal(`page:${id}#${page}`)
+  const isClient = useSession().actor.startsWith('cu-') // the firm's notes and review are internal (known before people load)
   const textBox = useRef<HTMLDivElement>(null)
   const sideCol = useColumnWidth('document.side', 460, 320, 900)
   useEffect(() => {
@@ -74,8 +78,12 @@ export function DocumentPage() {
                 page {page} of {doc.page_count} · simulated from printed content
               </span>
             </div>
+            {view && isMasked(view.printed_content) && (
+              <div className="mb-2 text-right"><RevealButton r={shownPage} what="this page" /></div>
+            )}
             {view ? (
-              <PageText text={view.printed_content} fields={view.fields} activeEv={activeEv} onSelect={(ev) => select({ ev })} />
+              <PageText text={shownPage.content ? String(shownPage.content.printed_content) : view.printed_content}
+                fields={view.fields} activeEv={activeEv} onSelect={(ev) => select({ ev })} />
             ) : (
               '…'
             )}
@@ -120,11 +128,11 @@ export function DocumentPage() {
               <div className="section-title mb-1">Selected value</div>
               <ValueLayers evId={activeEv} />
             </div>
-            <ActivityPanel target={`ev:${activeEv}`} title="Review & notes on this value" />
+            {!isClient && <ActivityPanel target={`ev:${activeEv}`} title="Review & notes on this value" />}
           </section>
         )}
 
-        <ActivityPanel target={`doc:${doc.id}`} title="Review & notes on this document" />
+        {!isClient && <ActivityPanel target={`doc:${doc.id}`} title="Review & notes on this document" />}
 
         {doc.findings.length > 0 && (
           <section className="space-y-1.5">

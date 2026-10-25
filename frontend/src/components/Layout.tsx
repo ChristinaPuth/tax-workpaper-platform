@@ -23,6 +23,7 @@ export function Layout() {
   const { data: changes } = useQuery({
     queryKey: ['changes', actor],
     queryFn: () => api<{ count: number }>('/me/changes'),
+    enabled: !actor.startsWith('cu-'), // the firm's change log is internal
   })
   const { data: inbox } = useInbox()
   const { data: gate } = useGate()
@@ -37,38 +38,48 @@ export function Layout() {
           <span className="hidden text-[12px] text-slate-400 2xl:inline">Okafor-Lindqvist · 2025 · Married filing jointly</span>
         </div>
         <nav className="flex flex-wrap gap-1">
-          <NavLink to="/inbox" className={nav}>
-            Inbox
-            {inbox && inbox.total > 0 && <span className="num ml-1.5 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{inbox.total}</span>}
-          </NavLink>
-          <NavLink to="/return" className={nav}>
-            Return
-          </NavLink>
-          <NavLink to="/documents" className={nav}>
-            Documents
-          </NavLink>
-          <NavLink to="/findings" className={nav}>
-            Findings
-          </NavLink>
-          <NavLink to="/reports" className={nav}>
-            Reports
-          </NavLink>
-          <NavLink to="/filing" className={nav}>
-            Filing
-            {gate && (
-              <span className={`num ml-1.5 rounded-full px-1.5 text-[10px] ${gate.ready ? 'bg-emerald-500 text-white' : 'bg-slate-600 text-slate-200'}`}>
-                {gate.ready ? 'ready' : `${gate.summary.steps_done}/${gate.summary.steps_total}`}
-              </span>
-            )}
-          </NavLink>
+          {person?.role === 'client' ? (
+            // clients see their return, not the firm's workpaper
+            <>
+              <NavLink to="/portal" className={nav}>Your return</NavLink>
+              <NavLink to="/documents" className={nav}>Documents</NavLink>
+            </>
+          ) : (
+            <>
+              <NavLink to="/inbox" className={nav}>
+                Inbox
+                {inbox && inbox.total > 0 && <span className="num ml-1.5 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{inbox.total}</span>}
+              </NavLink>
+              <NavLink to="/return" className={nav}>
+                Return
+              </NavLink>
+              <NavLink to="/documents" className={nav}>
+                Documents
+              </NavLink>
+              <NavLink to="/findings" className={nav}>
+                Findings
+              </NavLink>
+              <NavLink to="/reports" className={nav}>
+                Reports
+              </NavLink>
+              <NavLink to="/filing" className={nav}>
+                Filing
+                {gate && (
+                  <span className={`num ml-1.5 rounded-full px-1.5 text-[10px] ${gate.ready ? 'bg-emerald-500 text-white' : 'bg-slate-600 text-slate-200'}`}>
+                    {gate.ready ? 'ready' : `${gate.summary.steps_done}/${gate.summary.steps_total}`}
+                  </span>
+                )}
+              </NavLink>
+            </>
+          )}
         </nav>
-        <SearchBar />
+        {person?.role !== 'client' && <SearchBar />}
         <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
           <HelpButton />
-          <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title={`Live updates: ${live}`}>
+          {person?.role !== 'client' && <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title={`Live updates: ${live}`}>
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
             <span className="hidden xl:inline">live</span>
-          </span>
+          </span>}
           {changes && changes.count > 0 && (
             <span className="chip border-indigo-400 bg-indigo-500/20 text-indigo-100" title="Changes by others since you last looked">
               {changes.count} new
