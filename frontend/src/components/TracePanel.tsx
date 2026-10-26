@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { api, type LineDetail, type LineRow, type Source, type TraceNode } from '../api'
 import { openFindings, useFindingStates, useLatestVersion, useLines, useWorking } from '../queries'
 import { ActivityPanel } from './ActivityPanel'
+import { RelatedSection } from './Related'
 import { AdjustPanel } from './AdjustPanel'
 import { fmtValue, formOf } from '../format'
 import { Ref } from './Ref'
@@ -113,6 +114,8 @@ export function TracePanel({ version, lineKey }: { version: string; lineKey: str
       </section>
 
       {downstream.length > 0 && <Feeds version={version} lines={downstream} />}
+
+      {version === latest && <RelatedSection node={`line:${version}:${lineKey}`} />}
     </div>
   )
 }

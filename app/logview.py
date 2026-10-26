@@ -32,3 +32,16 @@ class LogView:
 
     def of_type(self, *types: str) -> list[dict]:
         return [e for e in self.live if e["type"] in types]
+
+
+def filing_status(events: list[dict]) -> dict:
+    """Where filing stands: the last live 'file' event and the e-file acknowledgments recorded since.
+    A federal rejection means the return was never accepted: it is back in preparation, fixed and filed again."""
+    lv = LogView(events)
+    files = lv.of_type("file")
+    last_file = files[-1] if files else None
+    acks = [a for a in lv.of_type("efile") if last_file and a["id"] > last_file["id"]]
+    fed = [a for a in acks if a["payload"].get("jurisdiction") == "federal"]
+    rejected = fed[-1] if fed and fed[-1]["payload"].get("status") == "rejected" else None
+    return {"filed": last_file if last_file and not rejected else None, "last_file": last_file,
+            "rejected": rejected, "acks": acks, "all_acks": lv.of_type("efile")}

@@ -17,7 +17,7 @@ from collections import defaultdict
 from workpaper.working import WorkingReturn
 
 from .inbox import finding_state
-from .logview import LogView
+from .logview import LogView, filing_status
 
 FORM_NAMES = {"schedule a": "SchA", "schedule b": "SchB", "schedule c": "SchC", "schedule d": "SchD",
               "schedule e": "SchE", "schedule 1": "Sch1", "schedule 2": "Sch2", "schedule 3": "Sch3"}
@@ -125,7 +125,7 @@ def build_pack(notice_id: str, packet, index, working: WorkingReturn, findings, 
                 client_text[ref] = f"Q: {q.get('question', '')} A: {q.get('answer', '')}"
             elif ref.startswith("msg-") and ref in packet.msg:
                 client_text[ref] = packet.msg[ref]["text"]
-    return {"notice": notice, "version": v, "filed": next((e["at"] for e in events if e["type"] == "file"), None),
+    return {"notice": notice, "version": v, "filed": (filing_status(events)["filed"] or {}).get("at"),
             "items": items, "client_text": client_text}
 
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import binascii
 import uuid
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -18,7 +19,7 @@ from workpaper.working import build
 
 from . import db
 from .live import stream
-from .logview import LogView
+from .logview import LogView, filing_status
 from .people import CLIENT_LEVEL, Forbidden, Invalid, Person, check
 from .signoff import scope_of, take
 
@@ -41,9 +42,8 @@ AMENDMENT_TYPES = {"adjust", "note", "undo"}  # review of the amendment is not b
 
 
 def filing_event(eng) -> dict | None:
-    """The live 'file' event, if the return has been filed."""
-    undone = _undone_ids(eng)
-    return next((e for e in db.read_events(eng, types=["file"]) if e["id"] not in undone), None)
+    """The 'file' event in force: none before filing, or after the federal e-file was rejected."""
+    return filing_status(db.read_events(eng, types=["file", "efile", "undo"]))["filed"]
 
 
 def _check_layer(request: Request, person: Person, ne: NewEvent, target: str | None, ref: dict | None) -> None:
@@ -63,8 +63,22 @@ def _check_layer(request: Request, person: Person, ne: NewEvent, target: str | N
             raise HTTPException(409, f"not ready to file: {g['summary']['steps_done']} of {g['summary']['steps_total']} "
                                      f"steps done, {g['summary']['blockers']} blocker(s)")
         return
-    if ne.type == "undo" and ref is not None and ref["type"] == "file":
-        raise HTTPException(409, "a filed return cannot be unfiled; amend it instead")
+    if ne.type == "undo" and ref is not None and ref["type"] in ("file", "efile"):
+        raise HTTPException(409, "a filing and its acknowledgments stay on the record; amend or file again instead")
+    if ne.type == "efile":
+        st = filing_status(db.read_events(s.db, types=["file", "efile", "undo"]))
+        if st["last_file"] is None:
+            raise HTTPException(409, "nothing has been filed yet")
+        p = ne.payload
+        if p.get("jurisdiction") not in ("federal", "california"):
+            raise HTTPException(422, "jurisdiction is 'federal' or 'california'")
+        if p.get("status") not in ("accepted", "rejected", "not_transmitted"):
+            raise HTTPException(422, "status is 'accepted', 'rejected' or 'not_transmitted'")
+        if p["status"] == "rejected" and not p.get("errors"):
+            raise HTTPException(422, "a rejection lists the agency's error codes")
+        if ne.layer != "return" or target != f"ver:{s.store.packet.latest['version']}":
+            raise HTTPException(422, f"acknowledgments belong to the whole return (ver:{s.store.packet.latest['version']})")
+        return
     if ne.layer == "amendment":
         if not filed:
             raise HTTPException(409, "there is nothing to amend until the return is filed")
@@ -140,6 +154,27 @@ def _validate(request: Request, person: Person, ne: NewEvent, uploading: bool = 
             raise HTTPException(422, "attach a stored file (payload.attachment_id, see POST /api/attachments) or a ref")
         if aid is not None and (not isinstance(aid, int) or db.get_attachment(eng, aid) is None):
             raise HTTPException(422, f"no attachment {aid!r}")
+    if ne.type == "judgment" and ne.payload.get("kind") == "area":
+        from .coverage import validate_area
+        if target != f"ver:{s.store.packet.latest['version']}":
+            raise HTTPException(422, f"an area is considered for the whole return (ver:{s.store.packet.latest['version']})")
+        why = validate_area(s.store.packet, s.store.findings, db.read_events(eng), s.store.packet.latest["version"], ne.payload)
+        if why:
+            raise HTTPException(422, f"Area: {why}")
+    if ne.type == "assign":
+        to = s.people.get(ne.payload.get("to"))
+        if to is None or not to.is_staff:
+            raise HTTPException(422, "assign to a member of staff (payload.to, see /api/people)")
+        due = ne.payload.get("due")
+        if due is not None:
+            try:
+                date.fromisoformat(str(due))
+            except ValueError:
+                raise HTTPException(422, "payload.due is a date (YYYY-MM-DD)")
+    if ne.type == "link":
+        other = ne.payload.get("to")
+        if other not in s.store.index.nodes or other == target:
+            raise HTTPException(422, "link to another item (payload.to, a node id such as doc:D31 or line:v3:SchA.8a)")
     if ne.type == "judgment" and ne.payload.get("finding_id"):
         if not any(f.id == ne.payload["finding_id"] for f in s.store.findings):
             raise HTTPException(422, f"no finding {ne.payload['finding_id']!r}")

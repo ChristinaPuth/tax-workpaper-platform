@@ -10,6 +10,8 @@ import { useSession } from '../session-context'
 import { fmtTime } from '../format'
 import { hrefFor } from '../refs'
 import { Replay } from './Replay'
+import { AreasCoverage } from './AreasCoverage'
+import { Efile } from './Efile'
 import { useMarkVisited } from '../queries'
 
 const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: string }> = {
@@ -21,19 +23,19 @@ const STATUS: Record<GateStep['status'], { icon: string; cls: string; label: str
 export function FilingPage() {
   useMarkVisited('filing')
   const [params, setParams] = useSearchParams()
-  const replay = params.get('tab') === 'replay'
+  const tab = params.get('tab') ?? 'steps'
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-4 p-6">
         <div className="flex gap-1 border-b border-slate-200">
-          {([['steps', 'Can we file?'], ['replay', 'Season replay']] as const).map(([k, label]) => (
-            <button key={k} onClick={() => setParams(k === 'steps' ? {} : { tab: 'replay' })}
-              className={`-mb-px border-b-2 px-3 py-1.5 text-[13px] font-medium ${(k === 'replay') === replay ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+          {([['steps', 'Can we file?'], ['areas', 'Areas considered'], ['replay', 'Season replay']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setParams(k === 'steps' ? {} : { tab: k })}
+              className={`-mb-px border-b-2 px-3 py-1.5 text-[13px] font-medium ${k === tab ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
               {label}
             </button>
           ))}
         </div>
-        {replay ? <Replay /> : <Steps />}
+        {tab === 'replay' ? <Replay /> : tab === 'areas' ? <AreasCoverage /> : <Steps />}
       </div>
     </div>
   )
@@ -47,6 +49,18 @@ function Steps() {
   return (
     <div className="space-y-5">
       <div className="contents">
+        {gate.rejected && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4">
+            <h1 className="text-lg font-semibold text-slate-900">E-file rejected on {fmtTime(gate.rejected.at)}</h1>
+            <ul className="mt-1 space-y-0.5 text-[13px] text-red-900">
+              {gate.rejected.errors.map((e) => <li key={e.code}><span className="font-mono">{e.code}</span>: {e.message}</li>)}
+            </ul>
+            <p className="mt-1 text-slate-700">
+              The return was not accepted, so it is back in preparation: fix what the agency rejected, have the changes
+              reviewed and approved again, then file again.
+            </p>
+          </div>
+        )}
         {gate.filed && (
           <div className="rounded-lg border border-indigo-300 bg-indigo-50 p-4">
             <h1 className="text-lg font-semibold text-slate-900">Filed on {fmtTime(gate.filed.at)} by {gate.filed.by_name}</h1>
@@ -76,7 +90,7 @@ function Steps() {
             <h2 className="mb-2 font-semibold text-slate-800">Blocking filing</h2>
             <div className="divide-y divide-slate-100 rounded-md border border-red-200 bg-white">
               {gate.blockers.map((b, i) => {
-                const href = b.kind === 'errors' ? '/findings' : b.target ? hrefFor(b.target) : b.kind === 'reopened' ? '/inbox' : null
+                const href = b.kind === 'errors' ? '/findings' : b.kind === 'areas' ? '/filing?tab=areas' : b.target ? hrefFor(b.target) : b.kind === 'reopened' ? '/inbox' : null
                 return (
                   <div key={i} className="flex items-center gap-2 px-3 py-2">
                     <span className="chip border-red-200 bg-red-50 text-red-700">{b.kind.replace('_', ' ')}</span>
@@ -128,6 +142,8 @@ function Steps() {
             ))}
           </ol>
         </section>
+
+        {(gate.filed || gate.acks.length > 0) && <Efile gate={gate} />}
 
         {version && (
           <section className="rounded-lg border border-slate-200 bg-white p-4">

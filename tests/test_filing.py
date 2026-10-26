@@ -35,6 +35,9 @@ def make_ready(c):
     items = c.get("/api/due-diligence", headers={"X-Actor": PRIYA}).json()["items"]
     assert post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence", decision="Form 8867 completed",
                 authority="IRC 6695(g)", checklist={i["id"]: True for i in items}).status_code == 201
+    for area in c.get("/api/coverage", headers={"X-Actor": PRIYA}).json()["left"]:
+        assert post(c, PRIYA, "judgment", RETURN, kind="area", area=area, applies=True,
+                    decision="Considered", authority="Workpapers for the area").status_code == 201
     assert post(c, DANIEL, "signoff", RETURN, level="reviewer").status_code == 201
     assert post(c, HELEN, "signoff", RETURN, level="partner").status_code == 201
     for who, name, pin in ((NGOZI, "Ngozi Okafor", "41207"), (ERIK, "Erik Lindqvist", "88310")):

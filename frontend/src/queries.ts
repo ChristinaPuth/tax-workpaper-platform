@@ -61,7 +61,7 @@ export function useGate() {
 }
 
 // Everything derived from the event log; refreshed after any write (here or, via SSE, by someone else).
-export const LOG_DERIVED = ['events', 'due-diligence', 'changes', 'working', 'inbox', 'finding-states', 'signoffs', 'gate', 'reports', 'settings']  // settings: quick start ticks follow your own events
+export const LOG_DERIVED = ['events', 'due-diligence', 'coverage', 'assignments', 'notifications', 'links', 'changes', 'working', 'inbox', 'finding-states', 'signoffs', 'gate', 'reports', 'settings']  // settings: quick start ticks follow your own events
 
 export function useRefreshLog() {
   const qc = useQueryClient()

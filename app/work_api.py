@@ -11,7 +11,12 @@ from workpaper.working import build
 
 from . import db
 from .events_api import _actor
+from .assignments import assignments, deadlines, notifications, team
+from .corrections import correction
+from .coverage import coverage
 from .due_diligence import checklist as dd_checklist
+from .links import related
+from .settings_api import as_of
 from .gate import build_gate
 from .inbox import AREAS, build_inbox, finding_states
 from .logview import LogView
@@ -205,3 +210,56 @@ def due_diligence(request: Request) -> dict:
     """The Form 8867 checklist worked out from the file: each dependent's credit and knowledge requirements."""
     s = request.app.state
     return dd_checklist(s.store.packet, s.store.findings, db.read_events(s.db), s.store.packet.latest["version"])
+
+
+@router.get("/coverage")
+def area_coverage(request: Request) -> dict:
+    """Every area considered: the firm's budget areas, what is in each and whether it was considered."""
+    s = request.app.state
+    events = db.read_events(s.db)
+    return coverage(s.store.packet, s.store.findings, events, s.store.packet.latest["version"],
+                    signoff_statuses(request, events), s.people)
+
+
+@router.get("/assignments")
+def team_and_deadlines(request: Request) -> dict:
+    s = request.app.state
+    events, today = db.read_events(s.db), as_of(s.store.packet)
+    return {"as_of": today.isoformat(), "team": team(s.store.packet, s.people),
+            "assignments": assignments(events, s.people, today),
+            "deadlines": deadlines(s.store.packet, events, signoff_statuses(request, events), today)}
+
+
+@router.get("/me/notifications")
+def my_notifications(request: Request, x_actor: str | None = Header(None)) -> dict:
+    s = request.app.state
+    person = _actor(request, x_actor)
+    events = db.read_events(s.db)
+    items = notifications(person, events, s.store.packet, s.people, signoff_statuses(request, events), as_of(s.store.packet))
+    return {"count": len(items), "urgent": sum(1 for i in items if i["urgent"]), "items": items}
+
+
+@router.get("/links/{node_id:path}")
+def links(node_id: str, request: Request) -> dict:
+    s = request.app.state
+    if node_id not in s.store.index.nodes:
+        raise HTTPException(404, f"no node {node_id!r}")
+    return related(s.store.packet, db.read_events(s.db), node_id, s.people)
+
+
+@router.get("/documents/{doc_id}/correction")
+def document_correction(doc_id: str, request: Request) -> dict:
+    """For a corrected document or the one it replaces: the pair and every value the correction changed."""
+    p = request.app.state.store.packet
+    if doc_id not in p.doc:
+        raise HTTPException(404, f"no document {doc_id!r}")
+    c = correction(p, doc_id)
+    if c is None:
+        raise HTTPException(404, f"{doc_id} has no corrected version")
+    return c
+
+
+@router.get("/efile/records")
+def efile_records(request: Request) -> list[dict]:
+    """The agency's e-file acknowledgments in the packet, offered to record against the filing."""
+    return request.app.state.store.packet.raw["tax_agency_records"].get("efile", [])

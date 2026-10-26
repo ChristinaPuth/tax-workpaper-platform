@@ -155,8 +155,11 @@ def document_detail(doc_id: str, request: Request) -> dict:
     if d is None:
         raise HTTPException(404, f"no document {doc_id!r}")
     findings = [_finding_dict(f) for f in s.findings if any(ix.doc_of(n) == f"doc:{doc_id}" for n in f.nodes + f.evidence)]
+    from .corrections import _pair
+    pair = _pair(p, doc_id)
     return {**{k: v for k, v in d.items() if k != "pages"}, "pages": [p_["page"] for p_ in d["pages"]],
-            "landing": ix.document_landing(doc_id), "coverage": s.coverage.get(doc_id), "findings": findings}
+            "landing": ix.document_landing(doc_id), "coverage": s.coverage.get(doc_id), "findings": findings,
+            "correction_pair": [pair[0]["id"], pair[1]["id"]] if pair else None}
 
 
 @router.get("/documents/{doc_id}/pages/{page}")

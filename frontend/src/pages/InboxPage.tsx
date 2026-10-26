@@ -7,6 +7,7 @@ import { hrefFor } from '../refs'
 import { useSession } from '../session-context'
 import { Empty, SeverityChip } from '../components/ui'
 import { AnswerBox } from '../components/ActivityPanel'
+import { WorkPlan } from '../components/WorkPlan'
 import { usePostBatch } from '../queries'
 import { useMarkVisited, useView } from '../queries'
 
@@ -49,6 +50,7 @@ export function InboxPage() {
             Okafor-Lindqvist · 2025 return{data.total > 0 ? ' · worst first, each with what to do next.' : ''}
           </p>
         </header>
+        <WorkPlan />
 
         {areas.length > 1 && (
           <div className="mb-4 flex flex-wrap gap-1">

@@ -6,7 +6,7 @@ import { fmtTime } from '../format'
 import { openAttachment, usePostEvent, useSignoffs, useTargetEvents, useUpload } from '../queries'
 import { useSession } from '../session-context'
 
-const THREAD = 'note,question,answer,review_note,resolve_note,verify,signoff,judgment,attach'
+const THREAD = 'note,question,answer,review_note,resolve_note,verify,signoff,judgment,attach,assign'
 const LEVELS = ['preparer', 'reviewer', 'partner'] as const
 const label = (s: string) => s.replace(/_/g, ' ')
 
@@ -16,7 +16,8 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
   const { data: allSignoffs = [] } = useSignoffs()
   const post = usePostEvent()
   const sign = usePostEvent() // its own mutation, so a refused sign-off shows its reason next to the button
-  const [mode, setMode] = useState<'note' | 'question' | 'review_note' | 'verify' | null>(null)
+  const [mode, setMode] = useState<'note' | 'question' | 'review_note' | 'verify' | 'assign' | null>(null)
+  const [due, setDue] = useState('')
   const [text, setText] = useState('')
   const [to, setTo] = useState('')
   const [blocking, setBlocking] = useState(true)
@@ -43,12 +44,14 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
   const submit = () => {
     if (mode === 'verify') post.mutate({ type: 'verify', target, payload: { method, note: text.trim() || undefined } })
     else if (mode === 'question') post.mutate({ type: 'question', target, payload: { to, text } })
+    else if (mode === 'assign') post.mutate({ type: 'assign', target, payload: { to, ...(due ? { due } : {}), ...(text.trim() ? { note: text.trim() } : {}) } })
     else if (mode === 'review_note') post.mutate({ type: 'review_note', target, payload: { text, blocking } })
     else if (mode) post.mutate({ type: 'note', target, payload: { text } })
     setText('')
+    setDue('')
     setMode(null)
   }
-  const valid = mode === 'verify' || (text.trim() && (mode !== 'question' || to))
+  const valid = mode === 'verify' || (mode === 'assign' ? !!to : text.trim() && (mode !== 'question' || to))
 
   return (
     <section className="space-y-2">
@@ -112,11 +115,12 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
                     </span>
                     {e.type === 'review_note' && isResolved && <span className="chip border-emerald-200 bg-emerald-50 text-emerald-700">resolved</span>}
                     <span className="text-slate-600">{name(e.actor)}</span>
-                    {e.type === 'question' && <span className="text-slate-400">→ {name(String(e.payload.to))}</span>}
+                    {(e.type === 'question' || e.type === 'assign') && <span className="text-slate-400">→ {name(String(e.payload.to))}</span>}
+                    {e.type === 'assign' && e.payload.due ? <span className="text-slate-400">· due {String(e.payload.due)}</span> : null}
                     <span className="ml-auto text-[11px] text-slate-400">{fmtTime(e.at)}</span>
                   </div>
                   {e.type === 'attach' ? <AttachedFile e={e} /> : <p className="mt-0.5 text-slate-800">
-                    {e.type === 'verify' ? label(String(e.payload.method)) : e.type === 'judgment' ? String(e.payload.decision) : String(e.payload.text ?? '')}
+                    {e.type === 'verify' ? label(String(e.payload.method)) : e.type === 'judgment' ? String(e.payload.decision) : e.type === 'assign' ? String(e.payload.note ?? '') : String(e.payload.text ?? '')}
                     {e.type === 'verify' && e.payload.note ? ` — ${String(e.payload.note)}` : ''}
                   </p>}
                   {e.type === 'judgment' && <p className="text-[11px] text-slate-500">Authority: {String(e.payload.authority)}</p>}
@@ -144,6 +148,7 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
         {can('note') && <button className={tab(mode === 'note')} onClick={() => setMode(mode === 'note' ? null : 'note')}>Note</button>}
         {can('question') && <button className={tab(mode === 'question')} onClick={() => setMode(mode === 'question' ? null : 'question')}>Ask someone</button>}
         {can('review_note') && <button className={tab(mode === 'review_note')} onClick={() => setMode(mode === 'review_note' ? null : 'review_note')}>Review note</button>}
+        {can('assign') && <button className={tab(mode === 'assign')} onClick={() => setMode(mode === 'assign' ? null : 'assign')}>Assign</button>}
         {can('attach') && <AttachButton target={target} />}
       </div>
       {mode && (
@@ -152,6 +157,18 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
             <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]">
               {VERIFICATION_TYPES.map((m) => <option key={m} value={m}>{label(m)}</option>)}
             </select>
+          )}
+          {mode === 'assign' && (
+            <div className="flex gap-1.5">
+              <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Assign to" className="min-w-0 flex-1 rounded-md border border-slate-300 px-2 py-1 text-[12px]">
+                <option value="">Assign to whom?</option>
+                {people.filter((p) => p.id.startsWith('st-')).map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — {label(p.role)}</option>
+                ))}
+              </select>
+              <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Due date"
+                className="rounded-md border border-slate-300 px-2 py-1 text-[12px]" />
+            </div>
           )}
           {mode === 'question' && (
             <select value={to} onChange={(e) => setTo(e.target.value)} className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]">
@@ -162,7 +179,7 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
             </select>
           )}
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
-            placeholder={mode === 'verify' ? 'Optional: what you checked' : mode === 'question' ? 'Your question' : 'Write a note'}
+            placeholder={mode === 'verify' ? 'Optional: what you checked' : mode === 'question' ? 'Your question' : mode === 'assign' ? 'Optional: what to do' : 'Write a note'}
             className="w-full rounded-md border border-slate-300 px-2 py-1 text-[12px]" />
           {mode === 'review_note' && (
             <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
@@ -171,7 +188,7 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
           )}
           {post.error && <p className="text-[12px] text-red-700">{(post.error as Error).message}</p>}
           <button type="submit" disabled={!valid || post.isPending} className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700">
-            {mode === 'verify' ? 'Record verification' : mode === 'question' ? 'Send question' : 'Add'}
+            {mode === 'verify' ? 'Record verification' : mode === 'question' ? 'Send question' : mode === 'assign' ? 'Assign' : 'Add'}
           </button>
         </form>
       )}
@@ -233,6 +250,7 @@ const KIND_STYLE: Record<string, string> = {
   attach: 'border-slate-300 bg-slate-50 text-slate-700',
   verify: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   question: 'border-sky-200 bg-sky-50 text-sky-700',
+  assign: 'border-violet-200 bg-violet-50 text-violet-700',
   review_note: 'border-amber-200 bg-amber-50 text-amber-800',
   judgment: 'border-indigo-200 bg-indigo-50 text-indigo-700',
 }

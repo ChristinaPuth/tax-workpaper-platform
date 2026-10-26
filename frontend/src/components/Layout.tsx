@@ -9,6 +9,7 @@ import { NavTrail } from './NavTrail'
 import { HelpButton } from './Help'
 import { ChangesChip } from './Changes'
 import { BatchUndo } from './BatchUndo'
+import { NotificationsBell } from './Notifications'
 
 const ROLE_LABEL: Record<string, string> = {
   preparer: 'Preparer',
@@ -76,6 +77,7 @@ export function Layout() {
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
             <span className="hidden xl:inline">live</span>
           </span>}
+          <NotificationsBell />
           <ChangesChip />
           <label className="flex items-center gap-2 text-[12px]">
             <span className="hidden text-slate-400 2xl:inline">Acting as</span>

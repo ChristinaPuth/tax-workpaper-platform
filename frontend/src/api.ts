@@ -141,6 +141,7 @@ export interface DocumentDetail {
   file_name: string
   page_count: number
   marked_corrected?: boolean | null
+  correction_pair?: [string, string] | null
   extraction: { status: string; values: number; reason: string | null }
   pages: number[]
   landing: Landing
@@ -329,6 +330,20 @@ export interface Gate {
   blockers: { kind: string; title: string; target: string | null; count?: number }[]
   summary: { steps_done: number; steps_total: number; blockers: number }
   filed: { at: string; by: string; by_name: string; event_id: number } | null
+  rejected: { at: string; errors: { code: string; message: string }[]; submission_id: string | null } | null
+  acks: EfileAck[]
+}
+
+export interface EfileAck {
+  event_id?: number
+  at?: string
+  date?: string
+  by_name?: string
+  jurisdiction: 'federal' | 'california'
+  status: 'accepted' | 'rejected' | 'not_transmitted'
+  submission_id?: string
+  received?: string
+  errors?: { code: string; message: string }[]
 }
 
 export const VERIFICATION_TYPES = [

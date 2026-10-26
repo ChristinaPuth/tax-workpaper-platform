@@ -174,6 +174,17 @@ export function ReturnPage() {
   )
 }
 
+// Form 8949 boxes: which part a sale is reported in, and what that says about it.
+const BOX: Record<string, string> = {
+  A: 'Box A · short-term, basis reported', B: 'Box B · short-term, basis not reported', C: 'Box C · short-term, no 1099-B',
+  D: 'Box D · long-term, basis reported', E: 'Box E · long-term, basis not reported', F: 'Box F · long-term, no 1099-B',
+  G: 'Box G · short-term digital assets, basis reported', H: 'Box H · short-term digital assets, basis not reported',
+  I: 'Box I · short-term digital assets, no 1099-DA', J: 'Box J · long-term digital assets, basis reported',
+  K: 'Box K · long-term digital assets, basis not reported', L: 'Box L · long-term digital assets, no 1099-DA',
+}
+const whole = (n: number) => Math.round(n).toLocaleString('en-US')
+const PAGE = 150
+
 function LinesTable({ rows, working, states, selected, onSelect }: {
   rows: LineRow[]
   working: Record<string, WorkingLine>
@@ -181,22 +192,73 @@ function LinesTable({ rows, working, states, selected, onSelect }: {
   selected: string | null
   onSelect: (k: string) => void
 }) {
-  const [showAll, setShowAll] = useState(false)
-  // Large detail (hundreds of sales) collapses to totals + flagged / changed rows until asked for.
+  // Large detail (hundreds of sales) opens on totals + flagged / changed rows; the rest is searched, grouped
+  // by part with subtotals, sorted, and shown a page at a time.
   const isDetail = rows.length > 60
-  const visible = isDetail && !showAll
-    ? rows.filter((r) => r.key.endsWith('total') || Object.keys(r.findings).length > 0 || r.key === selected || working[r.key])
-    : rows
+  const [show, setShow] = useState<'flagged' | 'all'>('flagged')
+  const [query, setQuery] = useState('')
+  const [part, setPart] = useState<string | null>(null)
+  const [sort, setSort] = useState<'form' | 'desc' | 'asc'>('form')
+  const [limit, setLimit] = useState(PAGE)
+  const partOf = (r: LineRow) => (r.line.includes('.') ? r.line.split('.')[0] : null)
+  const parts = useMemo(() => {
+    if (!isDetail) return []
+    const m = new Map<string, { n: number; total: number; flagged: number }>()
+    rows.forEach((r) => {
+      const p = partOf(r)
+      if (!p || r.key.endsWith('total')) return
+      const cur = m.get(p) ?? { n: 0, total: 0, flagged: 0 }
+      const v = working[r.key]?.value ?? r.value
+      m.set(p, { n: cur.n + 1, total: cur.total + (typeof v === 'number' ? v : 0), flagged: cur.flagged + (Object.keys(r.findings).length ? 1 : 0) })
+    })
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [rows, working, isDetail])
+  const valueOf = (r: LineRow) => { const v = working[r.key]?.value ?? r.value; return typeof v === 'number' ? v : 0 }
+  const filtered = useMemo(() => {
+    if (!isDetail) return rows
+    const q = query.trim().toLowerCase()
+    let out = rows.filter((r) =>
+      (show === 'all' || q || part || r.key.endsWith('total') || Object.keys(r.findings).length > 0 || r.key === selected || working[r.key])
+      && (!part || partOf(r) === part)
+      && (!q || r.label.toLowerCase().includes(q) || r.key.toLowerCase().includes(q)))
+    if (sort !== 'form') out = [...out].sort((a, b) => (sort === 'desc' ? valueOf(b) - valueOf(a) : valueOf(a) - valueOf(b)))
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, working, isDetail, show, query, part, sort, selected])
+  const visible = filtered.slice(0, limit)
   return (
     <div>
       {isDetail && (
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-1.5 text-[12px] text-slate-500">
-          <span>
-            {showAll ? `All ${rows.length} lines` : `Totals and flagged lines (${visible.length} of ${rows.length})`}
-          </span>
-          <button className="btn" onClick={() => setShowAll(!showAll)}>
-            {showAll ? 'Show totals and flagged only' : `Show all ${rows.length}`}
-          </button>
+        <div className="space-y-1.5 border-b border-slate-200 bg-white px-4 py-2 text-[12px] text-slate-500">
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={query} onChange={(e) => { setQuery(e.target.value); setLimit(PAGE) }} placeholder="Search description, security, date…"
+              aria-label="Search lines" className="w-56 rounded-md border border-slate-300 px-2 py-1 text-[12px] text-slate-800" />
+            <select value={show} onChange={(e) => { setShow(e.target.value as typeof show); setLimit(PAGE) }} aria-label="Which lines"
+              className="rounded-md border border-slate-300 px-2 py-1 text-[12px] text-slate-800">
+              <option value="flagged">Totals, flagged and changed</option>
+              <option value="all">All {rows.length} lines</option>
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort"
+              className="rounded-md border border-slate-300 px-2 py-1 text-[12px] text-slate-800">
+              <option value="form">Form order</option>
+              <option value="desc">Largest amount first</option>
+              <option value="asc">Smallest amount first</option>
+            </select>
+            <span className="ml-auto">{filtered.length} of {rows.length} lines</span>
+          </div>
+          {parts.length > 1 && (
+            <div className="flex flex-wrap gap-1">
+              <button onClick={() => setPart(null)} className={`chip ${part === null ? 'border-indigo-400 bg-indigo-50 text-indigo-800' : 'border-slate-200'}`}>All parts</button>
+              {parts.map(([p, v]) => (
+                <button key={p} onClick={() => { setPart(part === p ? null : p); setLimit(PAGE) }} title={BOX[p] ?? `Part ${p}`}
+                  className={`chip ${part === p ? 'border-indigo-400 bg-indigo-50 text-indigo-800' : 'border-slate-200'}`}>
+                  {BOX[p]?.split(' · ')[0] ?? p} · {v.n} · <span className="num">{whole(v.total)}</span>
+                  {v.flagged > 0 && <span className="text-amber-700"> · {v.flagged} flagged</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {part && BOX[part] && <div className="text-slate-600">{BOX[part]}: {parts.find(([p]) => p === part)?.[1].n} sales, net <b className="num">{whole(parts.find(([p]) => p === part)?.[1].total ?? 0)}</b></div>}
         </div>
       )}
       <table className="w-full">
@@ -236,6 +298,11 @@ function LinesTable({ rows, working, states, selected, onSelect }: {
           })}
         </tbody>
       </table>
+      {filtered.length > limit && (
+        <div className="flex justify-center p-3">
+          <button className="btn" onClick={() => setLimit(limit + PAGE)}>Show {Math.min(PAGE, filtered.length - limit)} more of {filtered.length - limit}</button>
+        </div>
+      )}
     </div>
   )
 }

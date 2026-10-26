@@ -6,6 +6,8 @@ import { fmtDate, fmtValue, formOf } from '../format'
 import { PageText } from '../components/PageText'
 import { ValueLayers } from '../components/ValueLayers'
 import { ActivityPanel } from '../components/ActivityPanel'
+import { CorrectionDiff } from '../components/CorrectionDiff'
+import { RelatedSection } from '../components/Related'
 import { isMasked, RevealButton, useReveal } from '../components/Reveal'
 import { useSession } from '../session-context'
 import { FindingCard, StatusChip } from '../components/ui'
@@ -132,6 +134,8 @@ export function DocumentPage() {
           </section>
         )}
 
+        {doc.correction_pair && <CorrectionDiff docId={doc.id} corrected={doc.correction_pair[1] === doc.id} />}
+        {!isClient && <RelatedSection node={`doc:${doc.id}`} />}
         {!isClient && <ActivityPanel target={`doc:${doc.id}`} title="Review & notes on this document" />}
 
         {doc.findings.length > 0 && (

@@ -31,18 +31,20 @@ EVENT_TYPES = {
     "assign",          # payload.to, payload.due
     "undo",            # payload.event_id - appends the reversal, never deletes
     "file",            # the partner files the whole return: it is frozen, later changes go to the amendment
+    "efile",           # an agency acknowledgment: payload.jurisdiction, status (accepted|rejected|not_transmitted), errors
+    "link",            # payload.to another node, payload.note: these two belong together
     "view_sensitive",  # written by the server when a cleared user unmasks a field
 }
 
 # judgment: a judgment call; election: a tax election; due_diligence: e.g. Form 8867;
-# penalty: a penalty decision; explanation: why a number moved or why an issue needs no change
-JUDGMENT_KINDS = {"judgment", "election", "due_diligence", "penalty", "explanation"}
+# penalty: a penalty decision; area: an area of the return considered (or not applicable); explanation: why a number moved or why an issue needs no change
+JUDGMENT_KINDS = {"judgment", "election", "due_diligence", "penalty", "explanation", "area"}
 
-_STAFF_WORK = {"note", "question", "answer", "verify", "adjust", "judgment", "signoff", "attach", "undo"}
+_STAFF_WORK = {"note", "question", "answer", "verify", "adjust", "judgment", "signoff", "attach", "undo", "link"}
 ALLOWED: dict[str, set[str]] = {
     "preparer": _STAFF_WORK,
     "reviewer": _STAFF_WORK | {"review_note", "resolve_note", "assign"},
-    "partner": _STAFF_WORK | {"review_note", "resolve_note", "assign", "file"},
+    "partner": _STAFF_WORK | {"review_note", "resolve_note", "assign", "file", "efile"},
     "quality_reviewer": {"note", "review_note", "resolve_note", "attach"},
     "firm_administrator": {"note", "assign"},
     "client": {"answer", "attach", "signoff", "undo"},  # undo: withdraw their own answer or approval

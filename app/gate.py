@@ -9,7 +9,7 @@ from __future__ import annotations
 from workpaper.working import WorkingReturn
 
 from .inbox import PARTNER_THRESHOLD, finding_state
-from .logview import LogView
+from .logview import LogView, filing_status
 
 DONE, OPEN, LATER = "done", "open", "later"
 
@@ -132,6 +132,11 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
         if effect > PARTNER_THRESHOLD and not log.signed_after(target, a.event_id, ("partner",), a.actor):
             blockers.append({"kind": "partner", "title": f"{a.key} change over {PARTNER_THRESHOLD:,} needs a partner",
                              "target": target})
+    from .coverage import BY_HAND, coverage  # here, not at import time: coverage imports inbox like this module
+    left = coverage(packet, findings, events, version, signoffs, people or {})["left"]
+    if left:
+        blockers.append({"kind": "areas", "title": f"{len(left)} of {len(BY_HAND)} areas not yet considered",
+                         "target": None, "count": len(left)})
     reopened = [s for s in signoffs if not s["valid"] and s["target"] != ret and s["level"] != "client"]
     if len(reopened) == 1:
         blockers.append({"kind": "reopened", "title": f"Sign-off on {reopened[0]['target'].split(':', 2)[-1]} reopened",
@@ -140,12 +145,15 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
         blockers.append({"kind": "reopened", "title": f"{len(reopened)} sign-offs reopened - sign again after review",
                          "target": None, "count": len(reopened)})
 
-    undone = {e["payload"].get("event_id") for e in events if e["type"] == "undo"}
-    filed = next((e for e in events if e["type"] == "file" and e["id"] not in undone), None)
+    fs = filing_status(events)
+    filed = fs["filed"]
     required = [s for s in steps if s["status"] != LATER]
     ready = all(s["status"] == DONE for s in required) and not blockers
     return {"ready": ready, "steps": steps, "blockers": blockers,
             "filed": {"at": filed["at"], "by": filed["actor"], "by_name": name(filed["actor"]), "event_id": filed["id"]}
             if filed else None,
+            "rejected": {"at": fs["rejected"]["payload"].get("received") or fs["rejected"]["at"], "errors": fs["rejected"]["payload"].get("errors", []),
+                         "submission_id": fs["rejected"]["payload"].get("submission_id")} if fs["rejected"] else None,
+            "acks": [{"event_id": a["id"], "at": a["at"], "by_name": name(a["actor"]), **a["payload"]} for a in fs["all_acks"]],
             "summary": {"steps_done": sum(1 for s in steps if s["status"] == DONE), "steps_total": len(steps),
                         "blockers": len(blockers)}}
