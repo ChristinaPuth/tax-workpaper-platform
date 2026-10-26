@@ -420,6 +420,120 @@ def prior(c: Ctx) -> list[dict]:
     ]
 
 
+# ------------------------------------------------------------------ payments
+def _payments_on_return(c: Ctx, key: str) -> dict[str, dict]:
+    """The payments a line is built from, by date: confirmations read as q1_date / q1_amount (/ q1_year)."""
+    groups: dict[str, dict] = defaultdict(dict)
+    for s_ in c.p.line(key, c.v).get("sources", []):
+        if s_ in c.p.ev:
+            e = c.p.ev[s_]
+            prefix, _, part = e["field"].rpartition("_")
+            groups[f"{e['document_id']}:{prefix}"][part] = e["value"]
+            groups[f"{e['document_id']}:{prefix}"]["doc"] = e["document_id"]
+    return {g["date"]: g for g in groups.values() if g.get("date")}
+
+
+def payments(c: Ctx) -> list[dict]:
+    rec = c.p.raw["tax_agency_records"]
+    transcript = rec["irs_account_transcript_2025"][0]
+    irs = {t["date"]: t["amount"] for t in transcript["transactions"] if t["code"] == "670"}
+    mine = _payments_on_return(c, "F1040.26")
+    fed_rows = []
+    for d in sorted(set(mine) | set(irs)):
+        a, b = mine.get(d, {}).get("amount"), irs.get(d)
+        fed_rows.append({"date": d, "return": a, "irs": b, "document": mine.get(d, {}).get("doc", ""),
+                         "status": "agrees" if a == b else "not on the IRS record" if b is None
+                         else "no confirmation in the file" if a is None else "amounts differ"})
+    ftb = rec["ftb_account"]
+    ftb25 = {x["date"]: x["amount"] for x in ftb["tax_year_2025_payments"]}
+    ftb24 = {x["date"]: x for x in ftb.get("tax_year_2024_payments_after_filing", [])}
+    ca_mine = _payments_on_return(c, "F540NR.72")
+    ca_rows = []
+    for d in sorted(set(ca_mine) | set(ftb25) | set(ftb24)):
+        a = ca_mine.get(d, {})
+        ca_rows.append({"date": d, "return": a.get("amount"), "year": a.get("year", ""), "ftb": ftb25.get(d),
+                        "document": a.get("doc", ""),
+                        "status": "agrees" if a.get("amount") == ftb25.get(d) else
+                        f"designated {a.get('year') or 'another year'}: the FTB credited it to tax year 2024" if d in ftb24 else
+                        "not on the FTB record" if ftb25.get(d) is None else "amounts differ"})
+    fed_total, irs_total = sum(_num(r["return"]) for r in fed_rows), sum(_num(r["irs"]) for r in fed_rows)
+    return [
+        _grid("Federal estimated payments: confirmations vs the IRS account",
+              [("date", "Date", False), ("document", "Confirmation", False), ("return", "In the file", True),
+               ("irs", f"IRS ({transcript['as_of']})", True), ("status", "", False)], fed_rows,
+              f"The return claims {_num(c.value('F1040.26')):,.0f}; confirmations in the file add to {fed_total:,.0f}; "
+              f"the IRS has {irs_total:,.0f}."),
+        _grid("California estimated payments: confirmations vs the FTB account",
+              [("date", "Date", False), ("document", "Confirmation", False), ("return", "In the file", True),
+               ("year", "Designated year", False), ("ftb", f"FTB ({ftb['as_of']})", True), ("status", "", False)], ca_rows,
+              f"The return claims {_num(c.value('F540NR.72')):,.0f}; the FTB credits {sum(ftb25.values()):,.0f} to 2025."),
+        c.lines("Federal payments and balance", ["F1040.25a", "F1040.26", "Sch3.10", "Sch3.11", "F1040.33", "F1040.37", "F1040.38"]),
+        c.lines("California payments and balance", ["F540NR.71", "F540NR.72", "F540NR.73", "F540NR.78", "F540NR.97"]),
+    ]
+
+
+# ------------------------------------------------------------------ roll forward to next year
+def rollforward(c: Ctx) -> list[dict]:
+    v = c.p.version[c.v]
+    out = v["carryovers_out"]
+    carry = [{"item": CARRY_LABELS.get(k, k.replace("_", " ")), "federal": val,
+              "california": out["california"].get(k) if isinstance(out["california"].get(k), (int, float)) else None}
+             for k, val in out["federal"].items() if isinstance(val, (int, float)) and val]
+    carry += [{"item": f"California depreciation basis difference - {a}", "federal": None, "california": d}
+              for a, d in (out["california"].get("depreciation_basis_differences") or {}).items()]
+    assets = [{"asset": a["asset_id"], "description": a["description"], "cost": a["cost"],
+               "accumulated": (a.get("federal") or {}).get("accumulated_end"),
+               "remaining": round(float(a["cost"]) - float((a.get("federal") or {}).get("accumulated_end") or 0), 2),
+               "california_accumulated": (a.get("california") or {}).get("accumulated_end")}
+              for a in v["assets"] if not a.get("disposed")]
+    still_open = [f for f in c.findings if f.severity != "info" and finding_state(f, c.log, c.v)["state"] == "open"
+                  and (f.check.startswith(("J12", "J10", "J11")) or f.severity == "error")]
+    choices = [{"item": e["payload"].get("kind", "").replace("_", " "), "decision": e["payload"].get("decision"),
+                "authority": e["payload"].get("authority"), "at": e["at"][:10]}
+               for e in c.log.of_type("judgment") if e["payload"].get("kind") in ("election", "due_diligence", "penalty")]
+    nxt = next((t for t in c.p.raw["timeline"] if t["event"] == "next_year_engagement_started"), None)
+    return [
+        _grid("Carried into 2026", [("item", "Item", False), ("federal", "Federal", True), ("california", "California", True)], carry,
+              (nxt or {}).get("detail")),
+        _grid("Assets still in service", [("asset", "Asset", False), ("description", "Description", False), ("cost", "Cost", True),
+                                          ("accumulated", "Federal accumulated", True), ("remaining", "Federal basis left", True),
+                                          ("california_accumulated", "California accumulated", True)], assets,
+              "Property B was sold in 2025 and drops off; everything else continues."),
+        c.lines("Basis to carry", ["F7203.15", "F7203.excess", "F8606.14"],
+                "S corporation stock basis ends at 0 after distributions above basis; the Ridgeline capital account "
+                f"ends at {_num(out['federal'].get('ridgeline_capital_account_end')):,.0f} (outside basis still never computed)."),
+        {"type": "issues", "title": "Still open - carry to next year's file",
+         "note": "Errors not yet settled and matters that outlast this return (outside filings, client-supplied basis).",
+         "rows": [{"id": f.id, "title": f.title, "severity": f.severity, "state": "open"} for f in still_open]},
+        _grid("Choices made this year", [("item", "Kind", False), ("decision", "Decision", False), ("authority", "Authority", False),
+                                         ("at", "Recorded", False)], choices,
+              "Elections and due diligence that next year's preparer should know about." if choices else "None recorded yet."),
+        c.lines("This year's figures - next year's prior-year comparison", ["F1040.9", "F1040.11", "F1040.15", "F1040.24",
+                                                                               "F1040.33", "F1040.37", "F540NR.17", "F540NR.64"]),
+    ]
+
+
+# ------------------------------------------------------------------ filings outside this return
+def outside(c: Ctx) -> list[dict]:
+    deadlines = c.p.firm["deadlines"]
+    rows = []
+    for f in c.findings:
+        if not f.check.startswith("J12"):
+            continue
+        st = finding_state(f, c.log, c.v)
+        words = {w.lower() for w in _WORD.findall(f.title)} - _COMMON
+        due = next((d for d in deadlines if words & {w.lower() for w in _WORD.findall(d["what"])}), None)
+        rows.append({"obligation": f.title, "what": f.detail, "due": due["date"] if due else "",
+                     "status": ("decided: " + str(st.get("decision"))) if st["state"] in ("decided", "reviewed") and st.get("decision")
+                     else "to discuss" if f.severity != "info" else "noted", "link": f"finding:{f.id}"})
+    return [
+        _grid("Filings outside this return", [("obligation", "Obligation", False), ("what", "What we know", False),
+                                              ("due", "Due", False), ("status", "Status", False)], rows,
+              "Obligations the file reveals that Forms 1040 / 540NR do not cover. Each needs a decision recorded on its "
+              "issue - usually a written advice to the clients - even when it is outside the engagement."),
+    ]
+
+
 REPORTS = {
     "rentals": ("Rentals and passive losses", rentals),
     "deductions": ("Deductions, credits and limits", deductions),
@@ -431,6 +545,9 @@ REPORTS = {
     "books": ("Books to tax", books),
     "retirement": ("Retirement and foreign", retirement),
     "prior": ("Prior preparer vs this year", prior),
+    "payments": ("Payments", payments),
+    "rollforward": ("Roll forward to 2026", rollforward),
+    "outside": ("Filings outside this return", outside),
 }
 
 

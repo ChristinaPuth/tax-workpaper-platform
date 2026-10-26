@@ -32,8 +32,9 @@ def make_ready(c):
         if f["severity"] != "info" and states[f["id"]]["state"] == "open"]
     assert c.post("/api/events/batch", headers={"X-Actor": PRIYA}, json={"events": events}).status_code == 201
     assert post(c, PRIYA, "verify", "doc:D06", method="agreed_to_prior_year").status_code == 201
-    assert post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence",
-                decision="Form 8867 completed for the CTC/ODC", authority="IRC 6695(g)").status_code == 201
+    items = c.get("/api/due-diligence", headers={"X-Actor": PRIYA}).json()["items"]
+    assert post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence", decision="Form 8867 completed",
+                authority="IRC 6695(g)", checklist={i["id"]: True for i in items}).status_code == 201
     assert post(c, DANIEL, "signoff", RETURN, level="reviewer").status_code == 201
     assert post(c, HELEN, "signoff", RETURN, level="partner").status_code == 201
     for who, name, pin in ((NGOZI, "Ngozi Okafor", "41207"), (ERIK, "Erik Lindqvist", "88310")):

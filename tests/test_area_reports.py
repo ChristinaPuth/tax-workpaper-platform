@@ -120,3 +120,25 @@ def test_retirement_and_prior_preparer(c):
     assert len(open_items) == 4
     form3520 = next(r for r in open_items if "3520" in r["text"])
     assert any("3520" in i["title"] for i in form3520["issues"])
+
+
+def test_payments_line_up_with_the_agencies(c):
+    rep = report(c, "payments")
+    fed, ca = (b for b in rep["blocks"] if b["type"] == "grid")
+    jan = next(r for r in fed["rows"] if r["date"] == "2026-01-15")
+    assert jan["return"] is None and jan["irs"] == 3000 and "13,000" in fed["note"]
+    sept = next(r for r in ca["rows"] if r["date"] == "2025-09-15")
+    assert sept["year"] == "2024" and sept["ftb"] is None and "2024" in sept["status"]
+    assert {"F-032", "F-033"} <= set(rep["issues"])
+
+
+def test_roll_forward_lists_what_next_year_needs(c):
+    rep = report(c, "rollforward")
+    carry = {r["item"]: r for r in next(b for b in rep["blocks"] if b["title"] == "Carried into 2026")["rows"]}
+    assert carry["Minimum tax credit"]["federal"] == 3871
+    assets = next(b for b in rep["blocks"] if b["title"] == "Assets still in service")["rows"]
+    assert not any(a["asset"].startswith("AUS-") for a in assets)     # property B was sold
+    c.post("/api/events", headers={"X-Actor": PRIYA}, json={"type": "judgment", "target": "ver:v3", "payload": {
+        "kind": "election", "decision": "Elect section 179 for the studio equipment", "authority": "IRC 179"}})
+    choices = next(b for b in report(c, "rollforward")["blocks"] if b["title"] == "Choices made this year")["rows"]
+    assert choices[0]["decision"].startswith("Elect section 179")

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { DocumentPage } from './pages/DocumentPage'
 import { DocumentsPage } from './pages/DocumentsPage'
+import { DueDiligencePage } from './pages/DueDiligencePage'
 import { FilingPage } from './pages/FilingPage'
 import { FindingsPage } from './pages/FindingsPage'
 import { InboxPage } from './pages/InboxPage'
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/findings" element={<FindingsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/filing" element={<FilingPage />} />
+        <Route path="/due-diligence" element={<DueDiligencePage />} />
         <Route path="*" element={<Navigate to="/inbox" replace />} />
       </Route>
     </Routes>

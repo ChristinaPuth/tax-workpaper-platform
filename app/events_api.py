@@ -5,11 +5,13 @@ validated against the index (the target must be a real node) and against people.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from workpaper.working import build
@@ -101,8 +103,8 @@ def _flag(evts: list[dict], undone: set[int]) -> list[dict]:
     return evts
 
 
-def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
-    """Return the row to append, or raise HTTPException."""
+def _validate(request: Request, person: Person, ne: NewEvent, uploading: bool = False) -> dict:
+    """Return the row to append, or raise HTTPException. uploading: an attach whose file is stored next."""
     s = request.app.state
     eng = s.db
     ref = None
@@ -126,6 +128,18 @@ def _validate(request: Request, person: Person, ne: NewEvent) -> dict:
         to = ne.payload.get("to")
         if to not in s.people or to == person.id:
             raise HTTPException(422, "a question is addressed to someone else (payload.to, see /api/people)")
+    if ne.type == "judgment" and ne.payload.get("kind") == "due_diligence" and "checklist" in ne.payload:
+        from .due_diligence import validate_checklist
+        why = validate_checklist(s.store.packet, s.store.findings, db.read_events(eng), s.store.packet.latest["version"],
+                                 ne.payload["checklist"] or {})
+        if why:
+            raise HTTPException(422, f"Form 8867 checklist: {why}")
+    if ne.type == "attach" and not uploading:
+        aid = ne.payload.get("attachment_id")
+        if aid is None and not ne.payload.get("ref"):
+            raise HTTPException(422, "attach a stored file (payload.attachment_id, see POST /api/attachments) or a ref")
+        if aid is not None and (not isinstance(aid, int) or db.get_attachment(eng, aid) is None):
+            raise HTTPException(422, f"no attachment {aid!r}")
     if ne.type == "judgment" and ne.payload.get("finding_id"):
         if not any(f.id == ne.payload["finding_id"] for f in s.store.findings):
             raise HTTPException(422, f"no finding {ne.payload['finding_id']!r}")
@@ -235,6 +249,68 @@ async def post_batch(b: Batch, request: Request, x_actor: str | None = Header(No
     cache = None if numbers_change else {}
     out = [_append(request, row, batch_id, cache) for row in rows]
     return {"batch_id": batch_id, "events": out}
+
+
+@router.post("/events/batch/{batch_id}/undo", status_code=201)
+async def undo_batch(batch_id: str, request: Request, x_actor: str | None = Header(None)) -> dict:
+    """Reverse a bulk action in one go: an undo for every event of the batch still standing, itself one batch."""
+    person = _actor(request, x_actor)
+    eng = request.app.state.db
+    members = [e for e in db.read_events(eng) if e.get("batch_id") == batch_id]
+    if not members:
+        raise HTTPException(404, f"no batch {batch_id!r}")
+    undone = _undone_ids(eng)
+    live = [e for e in members if e["id"] not in undone and e["type"] != "undo"]
+    if not live:
+        raise HTTPException(409, "everything in this batch is already undone")
+    layer = live[0].get("layer", "return")
+    return await post_batch(Batch(events=[NewEvent(type="undo", payload={"event_id": e["id"]}, layer=layer) for e in live]),
+                            request, x_actor)
+
+
+# ------------------------------------------------------------------------- attachments
+MAX_ATTACHMENT = 5 * 1024 * 1024
+
+
+class Upload(BaseModel):
+    target: str
+    filename: str
+    mime: str = "application/octet-stream"
+    data: str                      # base64 of the file
+    note: str | None = None
+    layer: str = "return"
+
+
+@router.post("/attachments", status_code=201)
+async def upload(u: Upload, request: Request, x_actor: str | None = Header(None)) -> dict:
+    """Store a file and record it on a node as an attach event (the file itself is kept as it was uploaded)."""
+    person = _actor(request, x_actor)
+    try:
+        data = base64.b64decode(u.data, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(422, "data must be the file in base64")
+    if not data:
+        raise HTTPException(422, "the file is empty")
+    if len(data) > MAX_ATTACHMENT:
+        raise HTTPException(413, f"files are limited to {MAX_ATTACHMENT // (1024 * 1024)} MB")
+    name = u.filename.replace("\\", "/").rsplit("/", 1)[-1].strip() or "file"
+    payload = {"filename": name, "mime": u.mime, "size": len(data), **({"note": u.note.strip()} if u.note and u.note.strip() else {})}
+    row = _validate(request, person, NewEvent(type="attach", target=u.target, payload=payload, layer=u.layer), uploading=True)
+    aid = db.put_attachment(request.app.state.db, actor=person.id, filename=name, mime=u.mime, data=data)
+    row["payload"] = {**row["payload"], "attachment_id": aid}
+    return _append(request, row)
+
+
+@router.get("/attachments/{attachment_id}")
+def download(attachment_id: int, request: Request, x_actor: str | None = Header(None)) -> Response:
+    person = _actor(request, x_actor)
+    a = db.get_attachment(request.app.state.db, attachment_id)
+    if a is None:
+        raise HTTPException(404, f"no attachment {attachment_id}")
+    if person.role == "client" and a["actor"] != person.id:
+        raise HTTPException(403, "clients can open the files they uploaded")
+    safe = a["filename"].replace('"', "")
+    return Response(a["data"], media_type=a["mime"], headers={"Content-Disposition": f'attachment; filename="{safe}"'})
 
 
 # ------------------------------------------------------------- what changed since I last looked

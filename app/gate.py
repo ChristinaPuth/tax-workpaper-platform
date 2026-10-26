@@ -78,10 +78,11 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
     steps.append(_findings_step(7, "Estimated payments agreed to IRS and FTB records", by("P1", "P2"), states,
                                 "Payments agree with the IRS transcript and the FTB account.",
                                 "Use the agency records."))
-    dd = [e for e in log.of_type("judgment") if e["payload"].get("kind") == "due_diligence"]
+    # only the Form 8867 checklist counts (the server accepts it only complete and with no problem left)
+    dd = [e for e in log.of_type("judgment") if e["payload"].get("kind") == "due_diligence" and e["payload"].get("checklist")]
     steps.append(_step(8, "Due diligence completed", DONE if dd else OPEN,
                        f"Due diligence recorded: {dd[-1]['payload'].get('decision')}" if dd
-                       else "Complete Form 8867 for the child tax credit and record it as due diligence.",
+                       else "Complete the Form 8867 checklist for the child tax credit and credit for other dependents.",
                        ["line:v3:F8867.status"]))
     steps.append(_findings_step(9, "Diagnostics resolved", by("P7"), states,
                                 "Every engine diagnostic has a recorded disposition.",

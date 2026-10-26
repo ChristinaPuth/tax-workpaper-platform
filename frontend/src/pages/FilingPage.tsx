@@ -102,6 +102,9 @@ function Steps() {
                     <span className={`chip ${STATUS[s.status].cls}`}>{STATUS[s.status].label}</span>
                   </div>
                   <p className="mt-0.5 text-slate-600">{s.detail}</p>
+                  {s.n === 8 && (
+                    <Link to="/due-diligence" className="text-[13px] text-indigo-700 hover:underline">Open the Form 8867 checklist →</Link>
+                  )}
                   {s.progress && s.progress.total > 0 && (
                     <div className="mt-1.5 flex items-center gap-2">
                       <div className="h-1.5 w-48 overflow-hidden rounded-full bg-slate-100">

@@ -11,6 +11,7 @@ from workpaper.working import build
 
 from . import db
 from .events_api import _actor
+from .due_diligence import checklist as dd_checklist
 from .gate import build_gate
 from .inbox import AREAS, build_inbox, finding_states
 from .logview import LogView
@@ -197,3 +198,10 @@ def notice_pack_html(notice_id: str, request: Request, x_actor: str | None = Hea
         page = s.sensitive.mask_text(page)
     return Response(page, media_type="text/html", headers={
         "Content-Disposition": f'attachment; filename="evidence-pack-{notice_id}.html"'})
+
+
+@router.get("/due-diligence")
+def due_diligence(request: Request) -> dict:
+    """The Form 8867 checklist worked out from the file: each dependent's credit and knowledge requirements."""
+    s = request.app.state
+    return dd_checklist(s.store.packet, s.store.findings, db.read_events(s.db), s.store.packet.latest["version"])

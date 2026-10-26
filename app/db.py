@@ -114,6 +114,18 @@ def read_events(eng: Engine, *, target: str | None = None, types: list[str] | No
         return [event_dict(r._mapping) for r in conn.execute(q)]
 
 
+def put_attachment(eng: Engine, *, actor: str, filename: str, mime: str, data: bytes) -> int:
+    with eng.begin() as conn:
+        return conn.execute(insert(attachments).values(at=now(), actor=actor, filename=filename, mime=mime,
+                                                       data=data)).inserted_primary_key[0]
+
+
+def get_attachment(eng: Engine, attachment_id: int) -> dict | None:
+    with eng.connect() as conn:
+        r = conn.execute(select(attachments).where(attachments.c.id == attachment_id)).first()
+    return dict(r._mapping) if r else None
+
+
 def get_event(eng: Engine, event_id: int) -> dict | None:
     with eng.connect() as conn:
         r = conn.execute(select(events).where(events.c.id == event_id)).first()

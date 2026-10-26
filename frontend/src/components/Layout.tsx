@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api, type WorkEvent } from '../api'
+import type { WorkEvent } from '../api'
 import { useSession } from '../session-context'
 import { shortLabel } from '../refs'
 import { useGate, useInbox } from '../queries'
 import { SearchBar } from './SearchBar'
 import { NavTrail } from './NavTrail'
 import { HelpButton } from './Help'
+import { ChangesChip } from './Changes'
+import { BatchUndo } from './BatchUndo'
 
 const ROLE_LABEL: Record<string, string> = {
   preparer: 'Preparer',
@@ -20,11 +21,6 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function Layout() {
   const { actor, person, people, setActor, live, recent } = useSession()
-  const { data: changes } = useQuery({
-    queryKey: ['changes', actor],
-    queryFn: () => api<{ count: number }>('/me/changes'),
-    enabled: !actor.startsWith('cu-'), // the firm's change log is internal
-  })
   const { data: inbox } = useInbox()
   const { data: gate } = useGate()
   const nav = ({ isActive }: { isActive: boolean }) =>
@@ -80,11 +76,7 @@ export function Layout() {
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
             <span className="hidden xl:inline">live</span>
           </span>}
-          {changes && changes.count > 0 && (
-            <span className="chip border-indigo-400 bg-indigo-500/20 text-indigo-100" title="Changes by others since you last looked">
-              {changes.count} new
-            </span>
-          )}
+          <ChangesChip />
           <label className="flex items-center gap-2 text-[12px]">
             <span className="hidden text-slate-400 2xl:inline">Acting as</span>
             <select
@@ -111,6 +103,7 @@ export function Layout() {
       <main className="min-h-0 flex-1">
         <Outlet />
       </main>
+      <BatchUndo />
       <LiveToasts recent={recent} actor={actor} />
     </div>
   )

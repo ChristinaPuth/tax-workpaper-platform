@@ -163,12 +163,19 @@ def test_the_gate_starts_closed_with_derived_steps(c):
     assert any(b["kind"] == "errors" for b in g["blockers"])
 
 
+def complete_8867(c, who="st-01"):
+    """Confirm every Form 8867 item the file produces and record it."""
+    items = c.get("/api/due-diligence", headers={"X-Actor": who}).json()["items"]
+    return c.post("/api/events", headers={"X-Actor": who}, json={"type": "judgment", "target": "line:v3:F8867.status",
+                  "payload": {"kind": "due_diligence", "decision": "Form 8867 completed", "authority": "IRC 6695(g); Form 8867",
+                              "checklist": {i["id"]: True for i in items}}})
+
+
 def test_steps_follow_the_work(c):
     post(c, PRIYA, "verify", "doc:D06", method="agreed_to_prior_year")
     decide(c, PRIYA, "F-034", "person:theo", kind="judgment",
            decision="SSN corrected to 666-74-3390", authority="Social Security card (D71), 2024 return (D06)")
-    post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence",
-         decision="Form 8867 completed: Theo qualifies for the CTC", authority="Form 8867 questions, D71, household")
+    assert complete_8867(c).status_code == 201
     _, s = steps(c)
     assert s[2]["status"] == s[3]["status"] == s[8]["status"] == "done"
 
@@ -289,3 +296,25 @@ def test_only_the_signer_withdraws_a_client_approval(c):
     assert undo(HELEN).status_code == 403 and undo(ERIK).status_code == 403
     assert undo(NGOZI).status_code == 201
     assert not [x for x in signoffs(c, RETURN) if x["actor"] == NGOZI]
+
+
+def test_the_8867_checklist_needs_every_item_and_no_open_problem(c):
+    items = c.get("/api/due-diligence", headers={"X-Actor": PRIYA}).json()
+    assert items["problems"] == ["theo.ssn"]                               # F-034 still open
+    r = complete_8867(c)
+    assert r.status_code == 422 and "theo.ssn" in r.json()["detail"]
+    partial = post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence", decision="done",
+                   authority="x", checklist={"ada.age": True})
+    assert partial.status_code == 422 and "confirm every item" in partial.json()["detail"]
+    decide(c, PRIYA, "F-034", "person:theo", kind="judgment", decision="SSN corrected to the card",
+           authority="Social Security card (D71)")
+    assert c.get("/api/due-diligence", headers={"X-Actor": PRIYA}).json()["problems"] == []
+    assert complete_8867(c).status_code == 201
+    _, s = steps(c)
+    assert s[8]["status"] == "done"
+
+
+def test_a_due_diligence_decision_without_the_checklist_does_not_complete_step_8(c):
+    post(c, PRIYA, "judgment", "line:v3:F8867.status", kind="due_diligence", decision="Done", authority="Form 8867")
+    _, s = steps(c)
+    assert s[8]["status"] == "open"

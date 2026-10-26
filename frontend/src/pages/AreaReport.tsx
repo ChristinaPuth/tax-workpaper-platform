@@ -19,6 +19,9 @@ export const AREA_REPORTS: [string, string][] = [
   ['books', 'Books to tax'],
   ['retirement', 'Retirement & foreign'],
   ['prior', 'Prior preparer vs this year'],
+  ['payments', 'Payments'],
+  ['rollforward', 'Roll forward to 2026'],
+  ['outside', 'Outside filings'],
 ]
 
 type Issue = { id: string; title: string; severity: string; state: string }
@@ -227,7 +230,7 @@ function ColumnsTable({ b, version }: { b: Extract<Block, { type: 'table' }>; ve
 }
 
 // for the Areas cards: which detailed report covers an area
-export const AREA_REPORT_FOR: Record<string, string> = { rentals: 'rentals', deductions: 'deductions', passthroughs: 'k1', california: 'state', business: 'books', totals: 'tax' }
+export const AREA_REPORT_FOR: Record<string, string> = { rentals: 'rentals', deductions: 'deductions', passthroughs: 'k1', california: 'state', business: 'books', totals: 'tax', payments: 'payments' }
 
 function IssueChip({ i }: { i: { severity: string; state: string } }) {
   const cls = i.state !== 'open' ? 'border-slate-300 bg-slate-100 text-slate-600'

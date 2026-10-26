@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type FindingState, type Gate, type Inbox, type LineRow, type MySettings, type Overview, type QuickStartPage, type Severity, type SignoffStatus, type WorkEvent, type WorkingReturn } from './api'
+import { api, currentActor, type FindingState, type Gate, type Inbox, type LineRow, type MySettings, type Overview, type QuickStartPage, type Severity, type SignoffStatus, type WorkEvent, type WorkingReturn } from './api'
 import { useSession } from './session-context'
 
 export function useOverview() {
@@ -61,7 +61,7 @@ export function useGate() {
 }
 
 // Everything derived from the event log; refreshed after any write (here or, via SSE, by someone else).
-export const LOG_DERIVED = ['events', 'changes', 'working', 'inbox', 'finding-states', 'signoffs', 'gate', 'reports', 'settings']  // settings: quick start ticks follow your own events
+export const LOG_DERIVED = ['events', 'due-diligence', 'changes', 'working', 'inbox', 'finding-states', 'signoffs', 'gate', 'reports', 'settings']  // settings: quick start ticks follow your own events
 
 export function useRefreshLog() {
   const qc = useQueryClient()
@@ -83,13 +83,66 @@ export function usePostEvent() {
   })
 }
 
+export interface BatchResult { batch_id: string; events: WorkEvent[] }
+
+// A bulk action is kept as this person's last batch, so it can be undone in one go (see BatchUndo).
 export function usePostBatch() {
   const refresh = useRefreshLog()
+  const qc = useQueryClient()
+  const { actor } = useSession()
   return useMutation({
     mutationFn: (events: NewEvent[]) =>
-      api<{ batch_id: string; events: WorkEvent[] }>('/events/batch', { method: 'POST', body: JSON.stringify({ events }) }),
+      api<BatchResult>('/events/batch', { method: 'POST', body: JSON.stringify({ events }) }),
+    onSuccess: (data) => {
+      if (data.events.length > 1) qc.setQueryData(['last-batch', actor], data)
+      refresh()
+    },
+  })
+}
+
+export function useLastBatch() {
+  const { actor } = useSession()
+  return useQuery<BatchResult | null>({ queryKey: ['last-batch', actor], queryFn: () => null, staleTime: Infinity, gcTime: Infinity })
+}
+
+export function useUndoBatch() {
+  const refresh = useRefreshLog()
+  const qc = useQueryClient()
+  const { actor } = useSession()
+  return useMutation({
+    mutationFn: (batchId: string) => api<BatchResult>(`/events/batch/${batchId}/undo`, { method: 'POST' }),
+    onSuccess: () => {
+      qc.setQueryData(['last-batch', actor], null)
+      refresh()
+    },
+  })
+}
+
+// Upload a file and record it on a node (sent as base64 JSON).
+export function useUpload() {
+  const refresh = useRefreshLog()
+  return useMutation({
+    mutationFn: async ({ target, file, note, layer }: { target: string; file: File; note?: string; layer?: 'return' | 'amendment' }) => {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      let bin = ''
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+      return api<WorkEvent>('/attachments', { method: 'POST', body: JSON.stringify({
+        target, filename: file.name, mime: file.type || 'application/octet-stream', data: btoa(bin), note, layer }) })
+    },
     onSuccess: refresh,
   })
+}
+
+// Files are fetched with the acting person's header, then handed to the browser to open or save.
+export async function openAttachment(id: number, filename: string) {
+  const res = await fetch(`/api/attachments/${id}`, { headers: { 'X-Actor': currentActor() } })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail ?? res.statusText)
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export function useTargetEvents(target: string, types?: string) {

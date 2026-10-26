@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { VERIFICATION_TYPES, type WorkEvent } from '../api'
 import { fmtTime } from '../format'
-import { usePostEvent, useSignoffs, useTargetEvents } from '../queries'
+import { openAttachment, usePostEvent, useSignoffs, useTargetEvents, useUpload } from '../queries'
 import { useSession } from '../session-context'
 
-const THREAD = 'note,question,answer,review_note,resolve_note,verify,signoff,judgment'
+const THREAD = 'note,question,answer,review_note,resolve_note,verify,signoff,judgment,attach'
 const LEVELS = ['preparer', 'reviewer', 'partner'] as const
 const label = (s: string) => s.replace(/_/g, ' ')
 
@@ -115,10 +115,10 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
                     {e.type === 'question' && <span className="text-slate-400">→ {name(String(e.payload.to))}</span>}
                     <span className="ml-auto text-[11px] text-slate-400">{fmtTime(e.at)}</span>
                   </div>
-                  <p className="mt-0.5 text-slate-800">
+                  {e.type === 'attach' ? <AttachedFile e={e} /> : <p className="mt-0.5 text-slate-800">
                     {e.type === 'verify' ? label(String(e.payload.method)) : e.type === 'judgment' ? String(e.payload.decision) : String(e.payload.text ?? '')}
                     {e.type === 'verify' && e.payload.note ? ` — ${String(e.payload.note)}` : ''}
-                  </p>
+                  </p>}
                   {e.type === 'judgment' && <p className="text-[11px] text-slate-500">Authority: {String(e.payload.authority)}</p>}
                   {answer && (
                     <p className="mt-1 rounded bg-sky-50 px-2 py-1 text-sky-900">
@@ -144,6 +144,7 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
         {can('note') && <button className={tab(mode === 'note')} onClick={() => setMode(mode === 'note' ? null : 'note')}>Note</button>}
         {can('question') && <button className={tab(mode === 'question')} onClick={() => setMode(mode === 'question' ? null : 'question')}>Ask someone</button>}
         {can('review_note') && <button className={tab(mode === 'review_note')} onClick={() => setMode(mode === 'review_note' ? null : 'review_note')}>Review note</button>}
+        {can('attach') && <AttachButton target={target} />}
       </div>
       {mode && (
         <form className="space-y-1.5 rounded-md border border-indigo-200 bg-white p-2" onSubmit={(e) => { e.preventDefault(); if (valid) submit() }}>
@@ -179,7 +180,57 @@ export function ActivityPanel({ target, title = 'Review & notes' }: { target: st
   )
 }
 
+// A stored file on the thread: name, size, the note given with it, and a button to open it.
+function AttachedFile({ e }: { e: WorkEvent }) {
+  const [err, setErr] = useState('')
+  const id = e.payload.attachment_id as number | undefined
+  const name = String(e.payload.filename ?? e.payload.ref ?? 'file')
+  const size = Number(e.payload.size ?? 0)
+  return (
+    <div className="mt-0.5 text-slate-800">
+      {id ? (
+        <button className="text-indigo-700 hover:underline" disabled={e.undone}
+          onClick={() => openAttachment(id, name).catch((x: Error) => setErr(x.message))}>📎 {name}</button>
+      ) : <span>📎 {name}</span>}
+      {size > 0 && <span className="ml-1 text-[11px] text-slate-400">{size < 1024 ? `${size} B` : `${Math.round(size / 1024)} KB`}</span>}
+      {e.payload.note ? <span className="text-slate-600"> — {String(e.payload.note)}</span> : null}
+      {err && <span className="ml-2 text-red-700">{err}</span>}
+    </div>
+  )
+}
+
+function AttachButton({ target }: { target: string }) {
+  const upload = useUpload()
+  const [file, setFile] = useState<File | null>(null)
+  const [note, setNote] = useState('')
+  const { reset } = upload
+  useEffect(() => { setFile(null); reset() }, [target, reset])
+  return (
+    <>
+      <label className="btn cursor-pointer">
+        Attach file
+        <input type="file" className="sr-only" aria-label="Attach file"
+          onChange={(ev) => { setFile(ev.target.files?.[0] ?? null); upload.reset(); ev.target.value = '' }} />
+      </label>
+      {file && (
+        <form className="flex w-full flex-wrap items-center gap-1.5 rounded-md border border-indigo-200 bg-white p-2 text-[12px]"
+          onSubmit={(ev) => { ev.preventDefault(); upload.mutate({ target, file, note: note.trim() || undefined }, { onSuccess: () => { setFile(null); setNote('') } }) }}>
+          <span className="font-medium">📎 {file.name}</span>
+          <input value={note} onChange={(ev) => setNote(ev.target.value)} placeholder="Optional: what this file shows"
+            className="min-w-0 flex-1 rounded-md border border-slate-300 px-2 py-1" />
+          <button type="submit" disabled={upload.isPending} className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700">
+            {upload.isPending ? 'Uploading…' : 'Upload'}
+          </button>
+          <button type="button" className="btn" onClick={() => setFile(null)}>Cancel</button>
+        </form>
+      )}
+      {upload.error && <p className="w-full text-[12px] text-red-700">{(upload.error as Error).message}</p>}
+    </>
+  )
+}
+
 const KIND_STYLE: Record<string, string> = {
+  attach: 'border-slate-300 bg-slate-50 text-slate-700',
   verify: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   question: 'border-sky-200 bg-sky-50 text-sky-700',
   review_note: 'border-amber-200 bg-amber-50 text-amber-800',
