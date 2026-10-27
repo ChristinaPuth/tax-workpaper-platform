@@ -60,7 +60,7 @@ export function DocumentPage() {
           </div>
         </header>
         {doc.pages.length > 1 && (
-          <div className="flex gap-1 border-b border-slate-200 bg-white px-4 py-1.5">
+          <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 py-1.5">
             {doc.pages.map((p) => (
               <button
                 key={p}
