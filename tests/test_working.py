@@ -286,3 +286,11 @@ def test_fully_california_source_lines_use_the_california_source_rate():
     assert estimate(p, "F8949.E.N4", -9420)["california"] == round(-9420 * 0.034, 2)    # sold 08/12, in Texas
     assert estimate(p, "SchE.14A", -11000)["california"] == round(11000 * 0.064, 2)     # Sacramento rental
     assert estimate(p, "SchE.14B", -1800)["california"] == round(1800 * 0.099, 2)       # Austin rental
+
+
+def test_the_capped_salt_line_moves_federal_tax_and_california_counts_it_once(p):
+    # F-019: property tax 13,420 -> 6,508 takes SALT under the cap (5e 40,000 -> 34,378)
+    paid = estimate(p, "SchA.5b", 6508 - 13420)
+    deducted = estimate(p, "SchA.5e", 34378 - 40000)
+    assert paid["federal"] == 0 and deducted["federal"] == round(-5622 * -0.26, 2)
+    assert deducted["california"] == 0 and round(paid["california"]) == 332

@@ -39,14 +39,16 @@ export function Replay() {
   })
   if (!data) return <div className="text-slate-400">Loading the season…</div>
   const dates = data.key_dates
-  const i = Math.max(0, dates.findIndex((d) => d.date === data.at))
+  // the latest key date on or before the day shown (a typed date can fall between key dates)
+  const i = Math.max(0, dates.reduce((k, d, j) => (d.date <= data.at ? j : k), 0))
+  const between = dates[i]?.date !== data.at
   const go = (k: number) => setParams({ tab: 'replay', at: dates[Math.min(dates.length - 1, Math.max(0, k))].date })
 
   return (
     <div className="space-y-4">
       <div className="panel space-y-2 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn" onClick={() => go(i - 1)} disabled={i === 0} aria-label="Previous date">←</button>
+          <button className="btn" onClick={() => go(between ? i : i - 1)} disabled={i === 0 && !between} aria-label="Previous date">←</button>
           <input type="date" value={data.at} onChange={(e) => e.target.value && setParams({ tab: 'replay', at: e.target.value })}
             className="rounded-md border border-slate-300 px-2 py-1 text-[13px]" aria-label="Date" />
           <button className="btn" onClick={() => go(i + 1)} disabled={i >= dates.length - 1} aria-label="Next date">→</button>
@@ -54,7 +56,7 @@ export function Replay() {
         </div>
         <input type="range" min={0} max={dates.length - 1} value={i} onChange={(e) => go(Number(e.target.value))}
           className="w-full" aria-label="Season" />
-        <div className="text-[12px] text-slate-500">{dates[i]?.label} · {i + 1} of {dates.length} key dates</div>
+        <div className="text-[12px] text-slate-500">{between ? 'after ' : ''}{dates[i]?.label} · {i + 1} of {dates.length} key dates</div>
       </div>
 
       {data.alerts.map((a, k) => (

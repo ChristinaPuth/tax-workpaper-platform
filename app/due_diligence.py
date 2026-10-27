@@ -43,13 +43,13 @@ def checklist(packet, findings, events: list[dict], version: str) -> dict:
             items.append({"id": f"{pid}.{key}", "person": person["name"], "credit": credit, "question": question,
                           "facts": facts, "status": status, "evidence": list(evidence)})
 
-        item("relationship", f"Is {first} the taxpayers' qualifying relative?",
+        item("relationship", f"Does {first} meet the relationship test for a qualifying child?",
              f"Relationship on file: {person.get('relationship', 'not recorded')}.",
              "ok" if person.get("relationship") else "check", [node])
         item("age", f"Does {first}'s age fit the credit?",
              f"Age {age} on 31 Dec {year}: " + ("under 17, so the child tax credit." if ctc else
-                                                 ("a full-time student under 24, so a qualifying child for the credit for other dependents."
-                                                  if student and age < 24 else "over 17 and not a student under 24 - check the dependency tests.")),
+                                                 ("a full-time student under 24: a qualifying child, too old for the child tax credit, so the credit for other dependents."
+                                                  if student and age < 24 else "17 or older and not a student under 24 - check the qualifying relative tests.")),
              "ok" if ctc or (student and age < 24) else "check", [node])
         item("residency", f"Did {first} live with the taxpayers more than half the year?",
              f"{months} months on file." + (f" {person['note']}" if person.get("note") else ""),

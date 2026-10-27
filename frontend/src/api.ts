@@ -196,6 +196,7 @@ export interface WorkEvent {
   target: string | null
   payload: Record<string, unknown>
   batch_id: string | null
+  layer?: 'return' | 'amendment'
   undone?: boolean
 }
 
@@ -371,6 +372,7 @@ export interface SummaryRow {
   over_threshold: boolean
   finding_id: string | null
   finding_state: FindingState['state'] | null
+  estimated?: boolean
 }
 
 export interface SummaryReport {

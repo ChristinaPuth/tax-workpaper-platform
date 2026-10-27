@@ -67,6 +67,10 @@ def digest(content: dict) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def return_layer(events: list[dict]) -> list[dict]:
+    return [e for e in events if e.get("layer", "return") != "amendment"]
+
+
 def take(packet, index, working: WorkingReturn, log: LogView, target: str) -> tuple[list[str], dict, str]:
     """(scope, content, hash) for a sign-off on target as of now."""
     scope = scope_of(packet, index, target, working.version)
@@ -95,8 +99,9 @@ def _describe(node: str, before: dict | None, after: dict | None) -> dict:
 
 
 def statuses(packet, index, working: WorkingReturn, events: list[dict], snapshots: dict[int, dict]) -> list[dict]:
-    """Every live sign-off with valid / reopened and, when reopened, what changed since it was signed."""
-    log = LogView(events)
+    """Every live sign-off with valid / reopened and, when reopened, what changed since it was signed.
+    Sign-offs are on the return as filed: changes on the amendment layer do not reopen them."""
+    log = LogView(return_layer(events))
     out = []
     cache: dict[tuple, dict] = {}
     # signing again replaces your own earlier sign-off on the same node at the same level

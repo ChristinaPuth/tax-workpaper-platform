@@ -90,10 +90,10 @@ def build_gate(*, packet, index, findings, events: list[dict], working: WorkingR
     for n, level, title in ((10, "reviewer", "Reviewer sign-off"), (11, "partner", "Partner sign-off")):
         s = valid_return_signoff(level)
         if s and s["valid"]:
-            steps.append(_step(n, title, DONE, f"Signed by {name(s['actor'])} on {s['at'][:10]}.", [ret]))
+            steps.append(_step(n, title, DONE, f"Signed by {name(s['actor'])}.", [ret]))
         elif s:
-            steps.append(_step(n, title, OPEN, f"Reopened: {s['changed_count']} item(s) changed since it was signed "
-                                               f"on {s['at'][:10]}. Sign again after review.", [ret]))
+            steps.append(_step(n, title, OPEN, f"Reopened: {s['changed_count']} item(s) changed since "
+                                               f"{name(s['actor'])} signed. Sign again after review.", [ret]))
         else:
             steps.append(_step(n, title, OPEN, f"Sign off the whole return at {level} level.", [ret]))
     # married filing jointly: every client on the engagement approves and signs (Form 8879 / FTB 8879)

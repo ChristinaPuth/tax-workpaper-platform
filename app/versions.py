@@ -34,7 +34,7 @@ def states(packet) -> list[dict]:
     out.append({"id": WORKING, "label": f"Working ({packet.latest['version']} + adjustments)",
                 "trigger": "The latest version with everyone's adjustments applied (estimated where the engine would recompute)."})
     out.append({"id": AMENDED, "label": "Amended (as filed + amendment)",
-                "trigger": "After filing: the return as filed plus the changes made on the amendment (Form 1040-X)."})
+                "trigger": "After filing: the return as filed plus the changes made on the amendment (Form 1040-X; California 540NR with Schedule X)."})
     return out
 
 

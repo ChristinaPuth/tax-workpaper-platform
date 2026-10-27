@@ -97,7 +97,7 @@ function AtAGlance({ final }: { final: boolean }) {
     return (
       <div className="rounded-md border border-slate-200 bg-white p-3">
         <div className="text-[11px] uppercase tracking-wide text-slate-400">{who}</div>
-        <div className="text-lg font-semibold text-slate-900">{say(now)[0].toUpperCase() + say(now).slice(1)}</div>
+        <div className="text-lg font-semibold text-slate-900">{r.estimated ? '≈ ' : ''}{say(now)[0].toUpperCase() + say(now).slice(1)}</div>
         <div className="text-[12px] text-slate-500">Last year: {say(before)}</div>
       </div>
     )
@@ -120,13 +120,16 @@ function AtAGlance({ final }: { final: boolean }) {
             return r ? (
               <tr key={key}>
                 <td className="py-1 text-slate-700">{label}</td>
-                <td className="num py-1 text-right font-medium">{fmtValue(r.working)}</td>
+                <td className="num py-1 text-right font-medium">{r.estimated ? '≈ ' : ''}{fmtValue(r.working)}</td>
                 <td className="num py-1 pl-3 text-right text-[12px] text-slate-500">last year {fmtValue(r.prior)}</td>
               </tr>
             ) : null
           })}
         </tbody>
       </table>
+      {data.sections.some((sec) => sec.rows.some((r) => r.estimated)) && (
+        <p className="mt-1 text-[12px] text-slate-500">≈ estimated from the corrections we made; the final figures come from the tax software's final computation.</p>
+      )}
     </section>
   )
 }
@@ -195,7 +198,7 @@ function Approval({ partnerSigned, mine, approvals, clients, ret }: {
             <button type="submit" disabled={!consent || !name.trim() || pin.length !== 5 || post.isPending}
               className="btn border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700">Approve and sign</button>
           </div>
-          <p className="text-[12px] text-slate-500">Your PIN is your electronic signature. Choose any five digits; we do not store it.</p>
+          <p className="text-[12px] text-slate-500">Your PIN is your electronic signature. Choose any five digits except all zeros; we do not store it.</p>
           {post.error && <p className="text-[12px] text-red-700">{(post.error as Error).message}</p>}
         </form>
       )}

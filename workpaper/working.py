@@ -113,6 +113,8 @@ def infer_category(key: str) -> tuple[str, int] | None:
         return "wages", 1
     if key in ("Sch1.13", "Sch1.15", "Sch1.16", "Sch1.17", "Sch1.26", "F1040.10"):
         return "adjustment", 1
+    if key == "SchA.5e":  # the SALT actually deducted after the cap
+        return "salt_deducted", 1
     if form == "SchA":
         return ("salt", 1) if rest.startswith(("5", "7")) else ("itemized", 1)
     if form == "F8283":
@@ -154,6 +156,9 @@ def estimate(p: Packet, key: str, delta: float, category: str | None = None,
         return {"category": cat, "federal": -base, "california": 0.0, "estimated": True}
     if cat == "ca_credit":
         return {"category": cat, "federal": 0.0, "california": -base, "estimated": True}
+    if cat == "salt_deducted":  # federal itemized rate; California has no cap and counts the change on 5a-5c
+        rf = p.tax_effect_rate("itemized", version)[0]
+        return {"category": cat, "federal": round(base * rf, 2), "california": 0.0, "estimated": True}
     rf, rc = p.tax_effect_rate(cat, version)
     ca_cat = p.california_category(key, version)  # a fully California-source line uses that California rate
     if ca_cat:

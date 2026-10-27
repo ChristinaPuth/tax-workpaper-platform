@@ -66,7 +66,7 @@ function Steps() {
             <h1 className="text-lg font-semibold text-slate-900">Filed on {fmtTime(gate.filed.at)} by {gate.filed.by_name}</h1>
             <p className="text-slate-700">
               The return as filed is frozen: what was filed is kept exactly. Any change from here goes on the amendment
-              (Form 1040-X) and is listed against the filed return.
+              (Form 1040-X; for California, Form 540NR with Schedule X) and is listed against the filed return.
             </p>
             <Link to="/reports?tab=versions&a=working&b=amended" className="text-[13px] text-indigo-700 hover:underline">
               Compare as filed vs amended →
@@ -75,7 +75,7 @@ function Steps() {
         )}
         <header className={`rounded-lg border p-4 ${gate.ready ? 'border-emerald-300 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
           <h1 className="text-lg font-semibold text-slate-900">
-            {gate.ready ? 'Ready to file' : 'Not ready to file yet'}
+            {gate.filed ? 'All required steps done' : gate.ready ? 'Ready to file' : 'Not ready to file yet'}
           </h1>
           <p className="text-slate-700">
             {gate.summary.steps_done} of {gate.summary.steps_total} required steps done

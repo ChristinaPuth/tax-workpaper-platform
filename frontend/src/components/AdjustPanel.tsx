@@ -54,6 +54,11 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
   const parsed = Number(value.replace(/[$,\s]/g, ''))
   const valid = value.trim() !== '' && Number.isFinite(parsed) && reason.trim().length > 0
   const adjustEvents = history.filter((e) => e.type === 'adjust')
+  // each change is shown from the value it replaced: the engine's, or the change before it still standing
+  const fromOf = (i: number) => {
+    const before = adjustEvents.slice(0, i).filter((x) => !x.undone)
+    return before.length ? (before[before.length - 1].payload.new_value as number) : engineValue
+  }
 
   return (
     <section className="space-y-2">
@@ -74,14 +79,15 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
         <div>
           <div className="section-title mb-1">Changes to this line</div>
           <div className="divide-y divide-slate-100 rounded-md border border-slate-200 bg-white">
-            {adjustEvents.map((e) => {
+            {adjustEvents.map((e, i) => {
               const active = adjustment?.event_id === e.id
               return (
                 <div key={e.id} className={`p-2 ${e.undone ? 'opacity-50' : ''}`}>
                   <div className="flex items-baseline gap-2">
                     <span className="num font-medium">
-                      {fmtValue(engineValue)} → {fmtValue(e.payload.new_value as number)}
+                      {fmtValue(fromOf(i))} → {fmtValue(e.payload.new_value as number)}
                     </span>
+                    {e.layer === 'amendment' && <span className="chip border-violet-200 bg-violet-50 text-violet-700">amendment</span>}
                     {e.undone && <span className="chip border-slate-200 text-slate-500">undone</span>}
                     {active && <KindBadge kind="adjusted" />}
                     <span className="ml-auto text-[11px] text-slate-400">
@@ -93,7 +99,7 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
                     <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
                       {adjustment.effect.estimated ? (
                         <span>
-                          Estimated effect — federal <b className="num text-slate-700">{fmtEffect(adjustment.effect.federal)}</b>, California{' '}
+                          Estimated effect{fromOf(i) !== engineValue ? ' against the engine number' : ''} — federal <b className="num text-slate-700">{fmtEffect(adjustment.effect.federal)}</b>, California{' '}
                           <b className="num text-slate-700">{fmtEffect(adjustment.effect.california)}</b> ({adjustment.effect.category})
                         </span>
                       ) : (
@@ -120,7 +126,7 @@ export function AdjustPanel({ version, editable, lineKey, engineValue, working, 
         <div>
           {!open ? (
             <button className="btn" onClick={() => setOpen(true)}>
-              {gate?.filed ? 'Amend this number (1040-X)' : 'Adjust this number'}
+              {gate?.filed ? 'Amend this number' : 'Adjust this number'}
             </button>
           ) : (
             <form

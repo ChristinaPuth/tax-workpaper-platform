@@ -176,11 +176,12 @@ export function ReturnPage() {
 
 // Form 8949 boxes: which part a sale is reported in, and what that says about it.
 const BOX: Record<string, string> = {
-  A: 'Box A · short-term, basis reported', B: 'Box B · short-term, basis not reported', C: 'Box C · short-term, no 1099-B',
-  D: 'Box D · long-term, basis reported', E: 'Box E · long-term, basis not reported', F: 'Box F · long-term, no 1099-B',
-  G: 'Box G · short-term digital assets, basis reported', H: 'Box H · short-term digital assets, basis not reported',
-  I: 'Box I · short-term digital assets, no 1099-DA', J: 'Box J · long-term digital assets, basis reported',
-  K: 'Box K · long-term digital assets, basis not reported', L: 'Box L · long-term digital assets, no 1099-DA',
+  A: 'Box A · short-term, basis reported to the IRS', B: 'Box B · short-term, basis not reported to the IRS',
+  C: 'Box C · short-term, not reported on Form 1099-B', D: 'Box D · long-term, basis reported to the IRS',
+  E: 'Box E · long-term, basis not reported to the IRS', F: 'Box F · long-term, not reported on Form 1099-B',
+  G: 'Box G · short-term digital assets, basis reported to the IRS', H: 'Box H · short-term digital assets, basis not reported to the IRS',
+  I: 'Box I · short-term digital assets, not reported on Form 1099-DA', J: 'Box J · long-term digital assets, basis reported to the IRS',
+  K: 'Box K · long-term digital assets, basis not reported to the IRS', L: 'Box L · long-term digital assets, not reported on Form 1099-DA',
 }
 const whole = (n: number) => Math.round(n).toLocaleString('en-US')
 const PAGE = 150

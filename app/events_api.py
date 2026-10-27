@@ -21,7 +21,7 @@ from . import db
 from .live import stream
 from .logview import LogView, filing_status
 from .people import CLIENT_LEVEL, Forbidden, Invalid, Person, check
-from .signoff import scope_of, take
+from .signoff import return_layer, scope_of, take
 
 router = APIRouter(prefix="/api")
 
@@ -54,7 +54,7 @@ def _check_layer(request: Request, person: Person, ne: NewEvent, target: str | N
         raise HTTPException(422, "layer is 'return' or 'amendment'")
     if ne.type == "file":
         if filed:
-            raise HTTPException(409, f"already filed on {filed['at'][:10]}")
+            raise HTTPException(409, "the return is already filed")
         if ne.layer != "return" or target != f"ver:{s.store.packet.latest['version']}":
             raise HTTPException(422, f"file the whole return (ver:{s.store.packet.latest['version']})")
         from .work_api import gate  # here, not at import time: work_api imports this module
@@ -88,7 +88,7 @@ def _check_layer(request: Request, person: Person, ne: NewEvent, target: str | N
             raise HTTPException(409, "only amendment changes can be undone after filing")
         return
     if filed and ne.type in FROZEN_TYPES:
-        raise HTTPException(409, f"the return was filed on {filed['at'][:10]} and is frozen - "
+        raise HTTPException(409, "the return has been filed and is frozen - "
                                  "make this change on the amendment")
 
 
@@ -246,7 +246,7 @@ def _append(request: Request, row: dict, batch_id: str | None = None, cache: dic
         if "working" not in cache:
             events = db.read_events(s.db)
             cache["working"] = build(s.store.packet, s.store.index, events)
-            cache["log"] = LogView(events)
+            cache["log"] = LogView(return_layer(events))
         scope, content, digest = take(s.store.packet, s.store.index, cache["working"], cache["log"], row["target"])
         row["payload"] = {**row["payload"], "hash": digest, "scope_size": len(scope)}
         snapshot = (scope, content, digest)

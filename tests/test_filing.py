@@ -72,3 +72,11 @@ def test_the_filed_return_is_frozen_and_changes_go_to_the_amendment(c):
     diff = c.get("/api/compare", params={"a": "working", "b": "amended"}).json()
     assert {r["key"] for r in diff["lines"] if r["change"] == "changed"} >= {"SchA.8a", "SchA.17"}
     assert post(c, PRIYA, "undo", event_id=amend.json()["id"], layer="amendment").status_code == 201
+
+
+def test_amendment_changes_do_not_reopen_what_was_signed_and_filed(c):
+    make_ready(c)
+    assert post(c, HELEN, "file", RETURN, jurisdictions=["federal", "california"]).status_code == 201
+    assert post(c, PRIYA, "adjust", "line:v3:SchB.1.6", layer="amendment", new_value=1870, reason="FTB rounding").status_code == 201
+    held = {(s["level"], s["actor"]): s["valid"] for s in c.get("/api/signoffs").json() if s["target"] == RETURN}
+    assert held[("partner", HELEN)] and held[("client", NGOZI)] and held[("client", ERIK)]

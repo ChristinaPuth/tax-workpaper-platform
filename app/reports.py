@@ -71,11 +71,19 @@ RECONCILIATION_KINDS = [  # (check family, heading, what is compared)
 ]
 
 
+# Formula lines the engine would recompute: after a change their working value is the estimate
+# (change x tax-effect rate) from the working summary, not the engine's stale number.
+ESTIMATED = {"F1040.24": "total_tax", "F540NR.64": "ca_total_tax"}
+BALANCE = {"F1040.37": "balance_due", "F540NR.91": "ca_balance_due"}
+
+
 def _value(working: WorkingReturn, packet, key: str) -> tuple[float | None, float | None]:
     """(engine, working) for a current-version line."""
     line = packet.line(key, working.version)
     if line is None:
         return None, None
+    if key in ESTIMATED and working.summary.get(ESTIMATED[key]):
+        return line["value"], working.summary[ESTIMATED[key]]["value"]
     w = working.lines.get(key)
     return line["value"], (w["value"] if w else line["value"])
 
@@ -98,7 +106,7 @@ def summary_vs_prior(packet, working: WorkingReturn, findings, log: LogView) -> 
         f = p5.get(key)
         return {"label": label, "key": key, "prior_key": py_key, "prior": before,
                 "prior_source": prior["line_sources"].get(py_key), "engine": engine, "working": now,
-                "adjusted": now != engine, "change": change,
+                "adjusted": now != engine, "estimated": key in ESTIMATED and now != engine, "change": change,
                 "pct": None if change is None or not before else change / abs(before),
                 "over_threshold": over, "finding_id": f.id if f else None,
                 "finding_state": finding_state(f, log, working.version)["state"] if f else None}
@@ -107,14 +115,15 @@ def summary_vs_prior(packet, working: WorkingReturn, findings, log: LogView) -> 
         def signed(get, owe, refund):
             o, r = get(owe), get(refund)
             return None if o is None and r is None else (o or 0) - (r or 0)
-        now = signed(lambda k: _value(working, packet, k)[1], owe_key, refund_key)
         engine = signed(lambda k: _value(working, packet, k)[0], owe_key, refund_key)
+        est = working.summary.get(BALANCE.get(owe_key, ""))
+        now = est["value"] if est and est.get("value") is not None else signed(lambda k: _value(working, packet, k)[1], owe_key, refund_key)
         before = signed(lambda k: prior["lines"].get(k), py_owe, py_refund)
         key = owe_key if packet.line(owe_key, working.version) is not None else refund_key  # link the line that exists
         py_key = py_owe if py_owe in prior["lines"] else py_refund
         return {"label": "Amount owed (refund shown negative)", "key": key, "prior_key": py_key, "prior": before,
                 "prior_source": prior["line_sources"].get(py_key),
-                "engine": engine, "working": now, "adjusted": now != engine,
+                "engine": engine, "working": now, "adjusted": now != engine, "estimated": now != engine,
                 "change": None if now is None or before is None else now - before, "pct": None,
                 "over_threshold": False, "finding_id": None, "finding_state": None}
 

@@ -9,3 +9,6 @@ tests/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
+var-docker/
+demo-data/
+scripts/
