@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { api, currentActor } from '../api'
+import { api, requestHeaders } from '../api'
 import { Ref } from '../components/Ref'
 import { fmtDate, fmtValue } from '../format'
 import { useSession } from '../session-context'
@@ -37,7 +37,7 @@ export function NoticePage() {
   const download = async () => {
     setDownloading(true)
     try {
-      const res = await fetch(`/api/notices/${id}/pack.html`, { headers: { 'X-Actor': currentActor() } })
+      const res = await fetch(`/api/notices/${id}/pack.html`, { headers: requestHeaders() })
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
       a.href = url

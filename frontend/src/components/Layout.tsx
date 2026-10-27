@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import type { WorkEvent } from '../api'
+import { startOver, type WorkEvent } from '../api'
 import { useSession } from '../session-context'
 import { shortLabel } from '../refs'
-import { useGate, useInbox } from '../queries'
+import { useGate, useInbox, useOverview } from '../queries'
 import { SearchBar } from './SearchBar'
 import { NavTrail } from './NavTrail'
 import { HelpButton } from './Help'
@@ -73,6 +73,7 @@ export function Layout() {
         {person?.role !== 'client' && <SearchBar />}
         <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
           <HelpButton />
+          <StartOver />
           {person?.role !== 'client' && <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title={`Live updates: ${live}`}>
             <span className={`h-2 w-2 rounded-full ${live === 'open' ? 'bg-emerald-400' : live === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
             <span className="hidden xl:inline">live</span>
@@ -108,6 +109,19 @@ export function Layout() {
       <BatchUndo />
       <LiveToasts recent={recent} actor={actor} />
     </div>
+  )
+}
+
+// Public demo only: this tab works on its own copy; start over from the packet as delivered.
+function StartOver() {
+  const { data } = useOverview()
+  if (!data?.sandboxed) return null
+  return (
+    <button className="chip border-slate-500 bg-white/10 text-slate-100 hover:bg-white/20"
+      title="You are working on your own copy of this workpaper. A new tab also starts fresh."
+      onClick={() => { if (window.confirm('Start over with the packet as delivered? Your changes in this tab will be left behind.')) startOver() }}>
+      Start over
+    </button>
   )
 }
 

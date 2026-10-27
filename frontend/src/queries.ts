@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, currentActor, type FindingState, type Gate, type Inbox, type LineRow, type MySettings, type Overview, type QuickStartPage, type Severity, type SignoffStatus, type WorkEvent, type WorkingReturn } from './api'
+import { api, requestHeaders, type FindingState, type Gate, type Inbox, type LineRow, type MySettings, type Overview, type QuickStartPage, type Severity, type SignoffStatus, type WorkEvent, type WorkingReturn } from './api'
 import { useSession } from './session-context'
 
 export function useOverview() {
@@ -135,7 +135,7 @@ export function useUpload() {
 
 // Files are fetched with the acting person's header, then handed to the browser to open or save.
 export async function openAttachment(id: number, filename: string) {
-  const res = await fetch(`/api/attachments/${id}`, { headers: { 'X-Actor': currentActor() } })
+  const res = await fetch(`/api/attachments/${id}`, { headers: requestHeaders() })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail ?? res.statusText)
   const url = URL.createObjectURL(await res.blob())
   const a = document.createElement('a')

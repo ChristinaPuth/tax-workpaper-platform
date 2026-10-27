@@ -9,6 +9,7 @@ primary_region = 'sjc'
 [build]
 [env]
   PORT = '8000'
+  SANDBOX_PER_VISITOR = '1'  # public demo: each browser tab gets its own copy (app/sandbox.py)
 
 [[mounts]]
   source = 'workpaper_data'

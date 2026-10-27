@@ -1,7 +1,7 @@
 // Who is acting (role switcher) and the live event stream, shared by every view.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ACTOR_KEY, api, currentActor, type Person, type WorkEvent } from './api'
+import { ACTOR_KEY, api, currentActor, sandboxId, type Person, type WorkEvent } from './api'
 import { Ctx, type Session } from './session-context'
 import { LOG_DERIVED } from './queries'
 
@@ -32,7 +32,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setLive('closed')
       return
     }
-    const es = new EventSource(`/api/stream?after=${lastId.current}`)
+    const es = new EventSource(`/api/stream?after=${lastId.current}&sandbox=${sandboxId()}`)
     es.onopen = () => setLive('open')
     es.onerror = () => setLive(es.readyState === EventSource.CLOSED ? 'closed' : 'connecting')
     const onEvent = (e: MessageEvent) => {

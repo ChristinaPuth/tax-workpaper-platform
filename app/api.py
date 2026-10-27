@@ -52,6 +52,7 @@ def overview(request: Request) -> dict:
         "findings_total": len(s.findings),
         "findings_by_severity": sev,
         "documents_total": len(p.documents),
+        "sandboxed": getattr(request.app.state, "sandboxed", False),  # public demo: each visitor has a copy
     }
 
 

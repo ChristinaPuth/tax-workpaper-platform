@@ -10,6 +10,44 @@ export function currentActor(): string {
   }
 }
 
+// The public demo gives each browser tab its own copy of the workpaper (app/sandbox.py). The id lives in
+// sessionStorage: a reload keeps the tab's work, a new tab - or Start over - begins from the packet as delivered.
+const SANDBOX_KEY = 'workpaper.sandbox'
+let memorySandbox = ''
+
+function newSandboxId(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+export function sandboxId(): string {
+  try {
+    let id = sessionStorage.getItem(SANDBOX_KEY)
+    if (!id) {
+      id = newSandboxId()
+      sessionStorage.setItem(SANDBOX_KEY, id)
+    }
+    return id
+  } catch {
+    return (memorySandbox ||= newSandboxId())
+  }
+}
+
+export function startOver() {
+  try {
+    sessionStorage.removeItem(SANDBOX_KEY)
+  } catch {
+    memorySandbox = ''
+  }
+  window.location.assign('/inbox')
+}
+
+// Who is acting and in which copy: sent with every request that is not made through api()
+export function requestHeaders(): Record<string, string> {
+  return { 'X-Actor': currentActor(), 'X-Sandbox': sandboxId() }
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message)
@@ -19,7 +57,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', 'X-Actor': currentActor(), ...(init.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...requestHeaders(), ...(init.headers || {}) },
   })
   if (!res.ok) {
     let detail = res.statusText
@@ -287,6 +325,7 @@ export interface SearchResult {
 }
 
 export interface Overview {
+  sandboxed?: boolean
   versions: { version: string; computed_at: string; trigger: string; summary: Record<string, Record<string, number>> }[]
   latest_version: string
 }

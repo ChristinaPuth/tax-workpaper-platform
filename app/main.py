@@ -27,6 +27,7 @@ from workpaper.linking import link_findings
 from workpaper.packet import Packet
 from workpaper.packet import packet_path as default_packet_path
 
+from . import sandbox
 from .api import router
 from .db import make_engine
 from .events_api import router as events_router
@@ -74,6 +75,10 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
         app.state.sensitive = Sensitive(app.state.store.packet)
         app.state.db = make_engine(database_url)
         app.state.broker = Broker()
+        app.state.sandboxed = sandbox.enabled()
+        if app.state.sandboxed:  # a public demo: each visitor gets their own copy (app/sandbox.py)
+            boxes = sandbox.Sandboxes(app.state.db)
+            app.state.db, app.state.broker = sandbox.EngineProxy(boxes), sandbox.BrokerProxy(boxes)
         install_exit_signal_hook()  # open live streams end on shutdown instead of holding it up
         yield
         app.state.db.dispose()
@@ -82,6 +87,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     app.add_middleware(SensitiveDataMiddleware)  # innermost: masks before compression
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     app.add_middleware(GZipMiddleware, minimum_size=2000)  # line lists and label maps are large JSON
+    app.add_middleware(sandbox.SandboxMiddleware)  # outermost: the visitor's sandbox for the whole request
     app.include_router(router)
     app.include_router(events_router)
     app.include_router(work_router)
