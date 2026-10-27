@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { startOver, type WorkEvent } from '../api'
+import { loadExample, startOver, type WorkEvent } from '../api'
 import { useSession } from '../session-context'
 import { shortLabel } from '../refs'
 import { useGate, useInbox, useOverview } from '../queries'
@@ -112,16 +112,45 @@ export function Layout() {
   )
 }
 
-// Public demo only: this tab works on its own copy; start over from the packet as delivered.
+// Public demo only: this tab works on its own copy. Start over from the packet as delivered, or from the
+// worked example (everything settled and approved) to try filing, an e-file rejection and the amendment.
 function StartOver() {
   const { data } = useOverview()
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   if (!data?.sandboxed) return null
+  const example = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await loadExample()
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
   return (
-    <button className="chip border-slate-500 bg-white/10 text-slate-100 hover:bg-white/20"
-      title="You are working on your own copy of this workpaper. A new tab also starts fresh."
-      onClick={() => { if (window.confirm('Start over with the packet as delivered? Your changes in this tab will be left behind.')) startOver() }}>
-      Start over
-    </button>
+    <span className="relative">
+      <button className="chip border-slate-500 bg-white/10 text-slate-100 hover:bg-white/20" onClick={() => setOpen(!open)}
+        title="You are working on your own copy of this workpaper">
+        Demo data ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-[22rem] max-w-[calc(100vw-2rem)] space-y-2 rounded-md border border-slate-200 bg-white p-3 text-[12px] text-slate-700 shadow-xl">
+          <p>This tab has its own copy of the workpaper: a reload keeps your work, other visitors never see it.</p>
+          <button className="btn w-full justify-start" disabled={busy}
+            onClick={() => { if (window.confirm('Start over with the packet as delivered? Your changes in this tab will be left behind.')) startOver() }}>
+            Start over - the packet as delivered
+          </button>
+          <button className="btn w-full justify-start border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700" disabled={busy} onClick={example}>
+            {busy ? 'Preparing the example…' : 'Load the ready-to-file example'}
+          </button>
+          <p className="text-slate-500">Every issue settled, reviewed and signed, and both clients approved - try filing, an e-file rejection, filing again and an amendment. Opens as Helen, the partner.</p>
+          {error && <p className="text-red-700">{error}</p>}
+        </div>
+      )}
+    </span>
   )
 }
 

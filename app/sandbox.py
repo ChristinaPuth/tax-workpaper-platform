@@ -9,17 +9,24 @@ events, live updates included. Requests without an id use the shared database as
 Nothing else changes: app.state.db and app.state.broker are stand-ins that pick the current
 visitor's engine and broker, so the rest of the app is unaware of sandboxes. Old sandboxes are
 deleted after SANDBOX_MAX_AGE_HOURS, and at most SANDBOX_MAX are kept.
+
+A visitor can also load the worked example (app/demo.py: every issue settled, reviewed, signed and
+approved - ready to file) into a new copy. The example is built once, in the background after start-up,
+into a template file next to the sandboxes, and copied from there.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import shutil
 import threading
 import time
 from contextvars import ContextVar
 from pathlib import Path
 from urllib.parse import parse_qs
 
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy.engine import Engine
 
 from .db import make_engine
@@ -44,6 +51,8 @@ class Sandboxes:
         self.brokers: dict[str, Broker] = {}
         self.shared_broker = Broker()
         self.lock = threading.Lock()
+        self.template_lock = threading.Lock()  # separate: building the template goes through engine()
+        self.templates = self.folder.parent / "templates"
 
     def engine(self) -> Engine:
         sid = CURRENT.get()
@@ -79,6 +88,45 @@ class Sandboxes:
                 self.brokers.pop(sid, None)
             for extra in (f, f.with_name(f.name + "-wal"), f.with_name(f.name + "-shm")):
                 extra.unlink(missing_ok=True)
+
+    def template_path(self) -> Path:
+        """The ready-to-file example, keyed by the code that builds it."""
+        code = (Path(__file__).with_name("demo.py")).read_bytes()
+        return self.templates / f"ready-{hashlib.sha256(code).hexdigest()[:12]}.db"
+
+    def build_template(self, app) -> Path:
+        """Run the worked example once through the app's own API, in a scratch copy, and keep the file."""
+        from fastapi.testclient import TestClient  # here: only needed for the demo
+
+        from .demo import seed
+        with self.template_lock:
+            path = self.template_path()
+            if path.exists():
+                return path
+            sid = "template" + os.urandom(8).hex()
+            seed(TestClient(app, headers={"X-Sandbox": sid}), approved=True, log=lambda *_: None)
+            with self.lock:
+                self.engines.pop(sid).dispose()  # closes the file and folds the write-ahead log into it
+                self.brokers.pop(sid, None)
+            self.templates.mkdir(parents=True, exist_ok=True)
+            for old in self.templates.glob("ready-*.db"):
+                old.unlink()
+            scratch = self.folder / f"{sid}.db"
+            os.replace(scratch, path)
+            for extra in (scratch.with_name(scratch.name + "-wal"), scratch.with_name(scratch.name + "-shm")):
+                extra.unlink(missing_ok=True)
+            return path
+
+    def load_example(self, app, sid: str) -> None:
+        """Start this (new) copy from the worked example."""
+        target = self.folder / f"{sid}.db"
+        with self.lock:
+            if sid in self.engines or target.exists():
+                raise HTTPException(409, "this copy already has work in it - load the example into a new copy")
+        template = self.build_template(app)
+        with self.lock:
+            self._prune()
+            shutil.copyfile(template, target)
 
     def dispose(self) -> None:
         for eng in self.engines.values():
@@ -130,3 +178,17 @@ class SandboxMiddleware:
             await self.app(scope, receive, send)
         finally:
             CURRENT.reset(token)
+
+
+router = APIRouter(prefix="/api/sandbox")
+
+
+@router.post("/example", status_code=201)
+def load_example(request: Request) -> dict:
+    """Public demo: give this new copy the worked example - every issue settled and approved, ready to file."""
+    boxes = getattr(request.app.state, "sandboxes", None)
+    sid = CURRENT.get()
+    if boxes is None or sid is None:
+        raise HTTPException(409, "the worked example is only available on the public demo")
+    boxes.load_example(request.app, sid)
+    return {"sandbox": sid, "ready_to_file": True}

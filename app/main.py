@@ -8,6 +8,8 @@ role checks in app/people.py, fanned out live over SSE (app/live.py).
 """
 from __future__ import annotations
 
+import os
+import threading
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -67,6 +69,13 @@ def load_store(packet_path: str) -> Store:
                  loaded_in=time.monotonic() - t0)
 
 
+def _prebuild(boxes, app) -> None:
+    try:
+        boxes.build_template(app)
+    except Exception as e:  # the button builds it on demand instead
+        print(f"worked example not prebuilt: {e}", flush=True)
+
+
 def create_app(packet_path: str | None = None, database_url: str | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -77,8 +86,11 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
         app.state.broker = Broker()
         app.state.sandboxed = sandbox.enabled()
         if app.state.sandboxed:  # a public demo: each visitor gets their own copy (app/sandbox.py)
-            boxes = sandbox.Sandboxes(app.state.db)
+            boxes = app.state.sandboxes = sandbox.Sandboxes(app.state.db)
             app.state.db, app.state.broker = sandbox.EngineProxy(boxes), sandbox.BrokerProxy(boxes)
+            # build the worked example now, so "Load the ready-to-file example" is instant later
+            if os.environ.get("SANDBOX_PREBUILD", "1") != "0":
+                threading.Thread(target=_prebuild, args=(boxes, app), daemon=True).start()
         install_exit_signal_hook()  # open live streams end on shutdown instead of holding it up
         yield
         app.state.db.dispose()
@@ -93,6 +105,7 @@ def create_app(packet_path: str | None = None, database_url: str | None = None) 
     app.include_router(work_router)
     app.include_router(settings_router)
     app.include_router(sensitive_router)
+    app.include_router(sandbox.router)
     if FRONTEND_DIST.is_dir():  # the built React app, served from the same origin as the API
         app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 

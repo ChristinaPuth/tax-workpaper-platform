@@ -19,6 +19,7 @@ A, B = "aaaaaaaa1111", "bbbbbbbb2222"
 def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SANDBOX_PER_VISITOR", "1")
     monkeypatch.setenv("SANDBOX_DIR", str(tmp_path / "boxes"))
+    monkeypatch.setenv("SANDBOX_PREBUILD", "0")  # the example is built on demand in the test that needs it
     return tmp_path
 
 
@@ -88,3 +89,23 @@ def test_without_demo_mode_everyone_shares_one_workpaper(tmp_path, monkeypatch):
         assert c.get("/api/overview").json()["sandboxed"] is False
         note(c, A, "shared")
         assert notes(c, B) == ["shared"]
+
+
+def test_a_new_copy_can_start_from_the_ready_to_file_example(env):
+    with client(env) as c:
+        r = c.post("/api/sandbox/example", headers={"X-Actor": "st-03", "X-Sandbox": A})
+        assert r.status_code == 201
+        gate = c.get("/api/gate", headers={"X-Actor": "st-03", "X-Sandbox": A}).json()
+        assert gate["ready"] and gate["filed"] is None
+        assert c.get("/api/gate", headers={"X-Actor": "st-03", "X-Sandbox": B}).json()["ready"] is False
+        # built once: a second visitor gets a copy of the same template, and work in one stays there
+        C = "cccccccc3333"
+        assert c.post("/api/sandbox/example", headers={"X-Actor": "st-03", "X-Sandbox": C}).status_code == 201
+        assert c.post("/api/events", headers={"X-Actor": "st-03", "X-Sandbox": A}, json={
+            "type": "file", "target": "ver:v3", "payload": {"jurisdictions": ["federal"]}}).status_code == 201
+        assert c.get("/api/gate", headers={"X-Actor": "st-03", "X-Sandbox": C}).json()["filed"] is None
+        assert len(list((env / "templates").glob("ready-*.db"))) == 1
+        # only into a new copy (B was opened above), and only on the public demo
+        assert c.post("/api/sandbox/example", headers={"X-Actor": "st-03", "X-Sandbox": B}).status_code == 409
+        assert c.post("/api/sandbox/example", headers={"X-Actor": "st-03", "X-Sandbox": A}).status_code == 409
+        assert c.post("/api/sandbox/example", headers={"X-Actor": "st-03"}).status_code == 409

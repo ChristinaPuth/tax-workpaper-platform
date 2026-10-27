@@ -43,6 +43,21 @@ export function startOver() {
   window.location.assign('/inbox')
 }
 
+// Public demo: a new copy that starts from the worked example (every issue settled, reviewed and approved),
+// opened as the partner on the filing page.
+export async function loadExample(): Promise<void> {
+  const id = newSandboxId()
+  const res = await fetch('/api/sandbox/example', { method: 'POST', headers: { 'X-Actor': currentActor(), 'X-Sandbox': id } })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail ?? res.statusText)
+  try {
+    sessionStorage.setItem(SANDBOX_KEY, id)
+    localStorage.setItem(ACTOR_KEY, 'st-03')
+  } catch {
+    memorySandbox = id
+  }
+  window.location.assign('/filing')
+}
+
 // Who is acting and in which copy: sent with every request that is not made through api()
 export function requestHeaders(): Record<string, string> {
   return { 'X-Actor': currentActor(), 'X-Sandbox': sandboxId() }
